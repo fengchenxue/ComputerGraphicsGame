@@ -29,13 +29,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 		//return true if the message is WM_QUIT
 		if (window.processMessages()) break;
-		renderer.cleanup();
+		renderer.cleanFrame();
+
 		float currentTime = timer.time();	
 		renderer.updateConstantBuffer("buffername1", "time", &currentTime, sizeof(float));
 
 		renderer.Render();
 		renderer.present();
     }
-
+	renderer.cleanup();
     return 0;
 }

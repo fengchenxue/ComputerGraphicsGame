@@ -9,31 +9,27 @@
 
 class Renderer {
 private:
+	
 	struct Vertex
 	{
 		DirectX::XMFLOAT3 position;
 		DirectX::XMFLOAT4 color;
 	};
-	//struct alignas(16) ConstantBuffer
-	//{
-	//	float time;
-	//	float padding[3];
-	//	DirectX::XMFLOAT4 lights[4];
-	//};
-	//ConstantBuffer constantBufferData = { 0.0f };
 
-	struct ConstantBufferVariableInfo
+	struct ConstantBufferOffsetInfo
 	{
 		unsigned int offset;
 		unsigned int size;
 	};
 	struct ConstantBufferManager_single
 	{
+		bool dirty = false;
+		std::vector<unsigned char> temporaryBufferData;
 		std::string name;
-		std::map<std::string, ConstantBufferVariableInfo>  constantBufferVariableInfoMap;
+		std::map<std::string, ConstantBufferOffsetInfo>  constantBufferVariableInfoMap;
+		Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
 	};
 	std::vector<ConstantBufferManager_single> constantBufferManager_collection;
-
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
 	Microsoft::WRL::ComPtr<ID3D11Device> device;
@@ -47,7 +43,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	//Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
-	std::map<std::string, Microsoft::WRL::ComPtr<ID3D11Buffer>> constantBufferMap;
+	//std::map<std::string, Microsoft::WRL::ComPtr<ID3D11Buffer>> constantBufferMap;
 
 	Microsoft::WRL::ComPtr<ID3D11RasterizerState> rasterizerState;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencilState;
@@ -62,9 +58,15 @@ private:
 	
 public:
 	void Initialize(Window& window);
+	//call if you want to change variable in constant buffer
 	void updateConstantBuffer(std::string bufferName, std::string variableName, void* data, size_t dataSize);
+	//call every frame
 	void Render();
+	//call every frame
+	void cleanFrame();
+	//call at the end of the game
 	void cleanup();
+	//call every frame
 	void present();
 
 

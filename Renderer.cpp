@@ -66,10 +66,10 @@ void Renderer::CreateShaders()
 	context->VSSetShader(vertexShader.Get(), NULL, 0);
 	context->PSSetShader(pixelShader.Get(), NULL, 0);
 
-	//create shader reflection
+	//create shader reflection from the pixel shader
 	Microsoft::WRL::ComPtr<ID3D11ShaderReflection> reflection;
 	D3DReflect(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), __uuidof(ID3D11ShaderReflection), (void**)reflection.GetAddressOf());
-	//get the shader description
+	//get the shader description 
 	D3D11_SHADER_DESC sdc;
 	reflection->GetDesc(&sdc);
 	for (UINT i = 0; i < sdc.ConstantBuffers; i++) {
@@ -88,21 +88,23 @@ void Renderer::CreateShaders()
 
 		//iterate through all the variables in the constant buffer
 		for (UINT j = 0; j < sbd.Variables; j++) {
-			ID3D11ShaderReflectionVariable * variable = reflectionConstantBuffer->GetVariableByIndex(j);
+			ID3D11ShaderReflectionVariable* variable = reflectionConstantBuffer->GetVariableByIndex(j);
 
 			D3D11_SHADER_VARIABLE_DESC svd;
 			variable->GetDesc(&svd);
 
-			ConstantBufferVariableInfo bufferVariable;
+			ConstantBufferOffsetInfo bufferVariable;
 			bufferVariable.offset = svd.StartOffset;
 			bufferVariable.size = svd.Size;
 
 			constantBufferManager.constantBufferVariableInfoMap.insert({ svd.Name,bufferVariable });
 
-			totalSize += svd.Size;
+			totalSize = max(totalSize, svd.StartOffset + svd.Size);
 		}
 		//align the size of the constant buffer to 16 bytes
 		UINT allignedSize = (totalSize + 15) & ~15;
+		//resize the temporary buffer data to the size of the constant buffer
+		constantBufferManager.temporaryBufferData.resize(allignedSize,0);
 
 		//create constant buffer
 		D3D11_BUFFER_DESC bd = {};
@@ -114,16 +116,12 @@ void Renderer::CreateShaders()
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
 		device->CreateBuffer(&bd, nullptr, constantBuffer.GetAddressOf());
-
-		//store the constant buffer in the map
-		constantBufferMap.insert({ constantBufferManager.name, constantBuffer });
+		constantBufferManager.constantBuffer = constantBuffer;
 		//store the constant buffer manager in the vector
 		constantBufferManager_collection.push_back(constantBufferManager);
+
+		context->PSSetConstantBuffers(i, 1, constantBuffer.GetAddressOf());
 	}
-
-
-	//send the data to the GPU
-	//context->PSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
 
 }
 
@@ -135,16 +133,14 @@ void Renderer::updateConstantBuffer(std::string bufferName, std::string variable
 		//find the constant buffer manager with the given name
 		if (constantBufferManager_collection[i].name == bufferName)
 		{
-			ConstantBufferVariableInfo cbInfo = constantBufferManager_collection[i].constantBufferVariableInfoMap[variableName];
+			//find offset and size of the variable in the constant buffer
+			ConstantBufferOffsetInfo cboi = constantBufferManager_collection[i].constantBufferVariableInfoMap[variableName];
 
-			//map the constant buffer
-			D3D11_MAPPED_SUBRESOURCE mappedResource;
-			//constantBufferMap stores the constant buffer and is initialized in CreateShaders
-			context->Map(constantBufferMap[bufferName].Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-			unsigned char* dataPtr = static_cast<unsigned char*>(mappedResource.pData);
-			memcpy(dataPtr + cbInfo.offset, data, dataSize);
-			context->Unmap(constantBufferMap[bufferName].Get(), 0);
-
+			//copy the data to the temporary buffer data
+			memcpy(constantBufferManager_collection[i].temporaryBufferData.data() + cboi.offset, data, dataSize);
+			
+			//set the dirty flag to true
+			constantBufferManager_collection[i].dirty = true;
 			break;
 		}
 	}
@@ -280,18 +276,51 @@ void Renderer::Initialize(Window& window)
 
 void Renderer::Render()
 {
-
+	for (auto& manager : constantBufferManager_collection)
+	{
+		if (manager.dirty)
+		{
+			D3D11_MAPPED_SUBRESOURCE mappedResource;
+			context->Map(manager.constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+			memcpy(mappedResource.pData, manager.temporaryBufferData.data(), manager.temporaryBufferData.size());
+			context->Unmap(manager.constantBuffer.Get(), 0);
+			manager.dirty = false;
+			memset(manager.temporaryBufferData.data(), 0, manager.temporaryBufferData.size());
+		}
+	}
 
 	//draw the vertex buffer
 	context->Draw(3, 0);
 
 }
 
-void Renderer::cleanup()
+void Renderer::cleanFrame()
 {
 	float clearColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 	context->ClearRenderTargetView(backbufferRenderTargetView.Get(), clearColor);
 	context->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+}
+
+void Renderer::cleanup()
+{
+	//release all the resources
+	vertexBuffer.Reset();
+	for (auto& manager : constantBufferManager_collection)
+	{
+		manager.constantBuffer.Reset();
+	}
+	constantBufferManager_collection.clear();
+	inputLayout.Reset();
+	vertexShader.Reset();
+	pixelShader.Reset();
+	depthStencilView.Reset();
+	depthbuffer.Reset();
+	backbufferRenderTargetView.Reset();
+	backbuffer.Reset();
+	swapChain.Reset();
+	context.Reset();
+	device.Reset();
+	adapter.Reset();
 }
 
 void Renderer::present()
