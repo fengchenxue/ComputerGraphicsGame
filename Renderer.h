@@ -25,7 +25,8 @@ private:
 		Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
 	};
 	//used to store reflection constant buffer data
-	std::vector<ConstantBufferManager_single> constantBufferManager_collection;
+	std::vector<ConstantBufferManager_single> VSconstantBufferManager_collection;
+	std::vector<ConstantBufferManager_single> PSconstantBufferManager_collection;
 
 	Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
 	Microsoft::WRL::ComPtr<ID3D11Device> device;
@@ -43,8 +44,8 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-	int indicesSize;
-	UINT stride;
+	int indicesSize=0;
+	UINT stride=0;
 
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
@@ -53,15 +54,17 @@ private:
 	void InitializeDeviceAndContext(Window& window);
 	void InitializeRenderTarget(Window&window);
 	void InitializeShadersAndConstantBuffer();
+	void initializeIndexAndVertexBuffer(void *vertics, int vertexSizeInBytes,int numVertics,unsigned int *indices, int numIndics);
+	void initializeIndexAndVertexBuffer(std::vector<StaticVertex> vertices,std::vector<unsigned int> indices );
+	void BindIndexAndVertexBuffer();
 
-	void CreateVertexBuffer();
+	void updateConstantBufferManager();
 
-	
 public:
-	void Initialize(Window& window);
+	void Initialize(Window& window, std::vector<StaticVertex> vertices, std::vector<unsigned int> indices);
 
 	//call if you want to change variable in constant buffer
-	void updateConstantBuffer(std::string bufferName, std::string variableName, void* data, size_t dataSize);
+	void updateConstantBuffer(bool VSBuffer,std::string bufferName, std::string variableName, void* data, size_t dataSize);
 
 	//call every frame
 	void Render();
@@ -74,5 +77,6 @@ public:
 
 	//call every frame
 	void present();
+
 
 };
