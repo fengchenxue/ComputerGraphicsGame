@@ -75,7 +75,6 @@ void Renderer::InitializeRenderTarget(Window& window)
 	dbd.CPUAccessFlags = 0;
 	dbd.MiscFlags = 0;
 
-
 	//create depth buffer and its depth stencil view
 	device->CreateTexture2D(&dbd, NULL, depthbuffer.GetAddressOf());
 	device->CreateDepthStencilView(depthbuffer.Get(), NULL, depthStencilView.GetAddressOf());
@@ -365,8 +364,12 @@ void Renderer::Initialize(Window& window, std::vector<StaticVertex> vertices, st
 
 	//create configuration for depth stencil state
 	D3D11_DEPTH_STENCIL_DESC dsd = {};
+	dsd.DepthEnable = true;
+	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsd.DepthFunc = D3D11_COMPARISON_LESS;
+	dsd.StencilEnable = false;
+	//create depth stencil state and bind it to output merger stage
 	device->CreateDepthStencilState(&dsd, depthStencilState.GetAddressOf());
-	//apply the configuration to the context
 	context->OMSetDepthStencilState(depthStencilState.Get(), 0);
 
 	////create configuration for blend state

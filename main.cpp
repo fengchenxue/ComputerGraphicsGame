@@ -36,19 +36,62 @@ StaticVertex addVertex(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 normal, Dir
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
-    Window window;
+	Window window;
 	window.create(800, 600);
-    
+
 	Timer timer;
 
 	Renderer renderer;
 
 	std::vector<StaticVertex> vertices;
-	vertices.push_back(addVertex(DirectX::XMFLOAT3(-15.0f, 0.0f, -15.0f), DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f),  DirectX::XMFLOAT2(0.0f, 0.0f)));
-	vertices.push_back(addVertex(DirectX::XMFLOAT3(15.0f, 0.0f, -15.0f), DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
-	vertices.push_back(addVertex(DirectX::XMFLOAT3(-15.0f, 0.0f, 15.0f), DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f),  DirectX::XMFLOAT2(0.0f, 1.0f)));
-	vertices.push_back(addVertex(DirectX::XMFLOAT3(15.0f, 0.0f, 15.0f), DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
-	std::vector<unsigned int> indices = { 0, 1, 2, 2, 1, 3 };
+
+	DirectX::XMFLOAT3 p0 = { -1.0f, -1.0f, -1.0f };
+	DirectX::XMFLOAT3 p1 = { 1.0f, -1.0f, -1.0f };
+	DirectX::XMFLOAT3 p2 = { 1.0f, 1.0f, -1.0f };
+	DirectX::XMFLOAT3 p3 = { -1.0f, 1.0f, -1.0f };
+	DirectX::XMFLOAT3 p4 = { -1.0f, -1.0f, 1.0f };
+	DirectX::XMFLOAT3 p5 = { 1.0f, -1.0f, 1.0f };
+	DirectX::XMFLOAT3 p6 = { 1.0f, 1.0f, 1.0f };
+	DirectX::XMFLOAT3 p7 = { -1.0f, 1.0f, 1.0f };
+
+	vertices.push_back(addVertex(p0, DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(addVertex(p1, DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(addVertex(p2, DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(addVertex(p3, DirectX::XMFLOAT3(0.0f, 0.0f, -1.0f), DirectX::XMFLOAT2(0.0f, 0.0f)));
+
+	vertices.push_back(addVertex(p5, DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(addVertex(p4, DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(addVertex(p7, DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(addVertex(p6, DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f), DirectX::XMFLOAT2(0.0f, 0.0f)));
+
+	vertices.push_back(addVertex(p4, DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(addVertex(p0, DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(addVertex(p3, DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(addVertex(p7, DirectX::XMFLOAT3(-1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)));
+
+	vertices.push_back(addVertex(p1, DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(addVertex(p5, DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(addVertex(p6, DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(addVertex(p2, DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)));
+
+	vertices.push_back(addVertex(p3, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(addVertex(p2, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(addVertex(p6, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(addVertex(p7, DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)));
+
+	vertices.push_back(addVertex(p4, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 1.0f)));
+	vertices.push_back(addVertex(p5, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 1.0f)));
+	vertices.push_back(addVertex(p1, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(1.0f, 0.0f)));
+	vertices.push_back(addVertex(p0, DirectX::XMFLOAT3(0.0f, -1.0f, 0.0f), DirectX::XMFLOAT2(0.0f, 0.0f)));
+
+	std::vector<unsigned int> indices = 
+	{   0, 1, 2, 0, 2, 3,
+		4, 5, 6, 4, 6, 7,
+		8, 9, 10,8, 10,11,
+		12,13,14,12,14,15,
+		16,17,18,16,18,19,
+		20,21,22,20,22,23
+	};
 
 	renderer.Initialize(window, vertices, indices);
 
@@ -72,7 +115,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		renderer.updateConstantBuffer(true, "staticMeshBuffer", "W", &planeWorld, sizeof(planeWorld));
 
 		//update VP
-		DirectX::XMVECTOR eye = DirectX::XMVectorSet(40*cosf(timer.time()), 20.0f, 40*sinf(timer.time()), 0.0f);
+		DirectX::XMVECTOR eye = DirectX::XMVectorSet(10*cosf(timer.time()), 5.0f, 10*sinf(timer.time()), 0.0f);
 		//DirectX::XMVECTOR eye = DirectX::XMVectorSet(11.f, 5.0f, 11.f, 0.0f);
 		DirectX::XMVECTOR at = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 		DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
