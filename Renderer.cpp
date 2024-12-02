@@ -2,9 +2,7 @@
 #include <d3dcompiler.h>
 #include <vector>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -238,12 +236,12 @@ void Renderer::InitializeShadersAndConstantBuffer()
 	}
 }
 
-void Renderer::initializeIndexAndVertexBuffer(void* vertics, int vertexSizeInBytes, int numVertics, unsigned int* indices, int numIndics)
+void Renderer::initializeIndexAndVertexBuffer(void* vertics, int vertexSizeInBytes, size_t numVertics, unsigned int* indices, size_t numIndics)
 {
 	//create index buffer
 	D3D11_BUFFER_DESC bd = {};
 	bd.Usage = D3D11_USAGE_DEFAULT;
-	bd.ByteWidth = sizeof(unsigned int) * numIndics;
+    bd.ByteWidth = static_cast<UINT>(sizeof(unsigned int) * numIndics);
 	bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 
 	D3D11_SUBRESOURCE_DATA initData = {};
@@ -251,7 +249,7 @@ void Renderer::initializeIndexAndVertexBuffer(void* vertics, int vertexSizeInByt
 	device->CreateBuffer(&bd, &initData, &indexBuffer);
 
 	//create vertex buffer
-	bd.ByteWidth = vertexSizeInBytes * numVertics;
+    bd.ByteWidth = static_cast<UINT>(vertexSizeInBytes * numVertics);
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	initData.pSysMem = vertics;
 	device->CreateBuffer(&bd, &initData, &vertexBuffer);
@@ -387,7 +385,7 @@ void Renderer::Render()
 
 	//draw the vertex buffer
 	//context->Draw(4, 0);
-	context->DrawIndexed(indicesSize, 0, 0);
+    context->DrawIndexed(static_cast<UINT>(indicesSize), 0, 0);
 
 }
 

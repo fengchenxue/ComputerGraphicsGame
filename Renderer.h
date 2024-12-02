@@ -5,7 +5,6 @@
 #include<wrl.h>
 #include<d3d11shader.h>
 #include<map>
-#include<vector>
 
 class Renderer {
 private:
@@ -44,7 +43,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-	int indicesSize=0;
+	size_t indicesSize=0;
 	UINT stride=0;
 
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
@@ -54,7 +53,7 @@ private:
 	void InitializeDeviceAndContext(Window& window);
 	void InitializeRenderTarget(Window&window);
 	void InitializeShadersAndConstantBuffer();
-	void initializeIndexAndVertexBuffer(void *vertics, int vertexSizeInBytes,int numVertics,unsigned int *indices, int numIndics);
+	void initializeIndexAndVertexBuffer(void *vertics, int vertexSizeInBytes,size_t numVertics,unsigned int *indices, size_t numIndics);
 	void initializeIndexAndVertexBuffer(std::vector<StaticVertex> vertices,std::vector<unsigned int> indices );
 	void BindIndexAndVertexBuffer();
 
