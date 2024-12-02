@@ -22,8 +22,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	std::vector<StaticVertex> vertices;
 	std::vector<unsigned int> indices;
 
-	drawASphere(vertices, indices);
-
+	drawACube(vertices, indices);
 	renderer.Initialize(window, vertices, indices);
 
     while (true)
@@ -39,23 +38,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		renderer.cleanFrame();
 
 		//update the world matrix
-		DirectX::XMFLOAT4X4 planeWorld(1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f);
+		DirectX::XMMATRIX planeWorldF = DirectX::XMMatrixTranspose( DirectX::XMMatrixTranslation(5.0f, 0.0f, 0.0f));
+		DirectX::XMFLOAT4X4 planeWorld;
+		DirectX::XMStoreFloat4x4(&planeWorld, planeWorldF);
 		renderer.updateConstantBuffer(true, "staticMeshBuffer", "W", &planeWorld, sizeof(planeWorld));
 
-		//update VP
+		//update V
 		DirectX::XMVECTOR eye = DirectX::XMVectorSet(10*cosf(timer.time()), 5.0f, 10*sinf(timer.time()), 0.0f);
 		//DirectX::XMVECTOR eye = DirectX::XMVectorSet(11.f, 5.0f, 11.f, 0.0f);
 		DirectX::XMVECTOR at = DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 		DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookAtLH(eye, at, up));
-		//DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookAtLH(eye, at, up);
-		//DirectX::XMFLOAT4X4 viewMatrixF;
-		//DirectX::XMStoreFloat4x4(&viewMatrixF, viewMatrix);
-
-
+	
+		//update P
         constexpr float fov = DirectX::XMConvertToRadians(45.0f);
 		float aspectRatio = static_cast<float>(window.width) / static_cast<float>(window.height);
 		float nearZ = 0.1f;
@@ -66,10 +61,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//VP = DirectX::XMMatrixTranspose(VP);
 		DirectX::XMFLOAT4X4 VPF;
 		DirectX::XMStoreFloat4x4(&VPF, VP);
-
 		renderer.updateConstantBuffer(true, "staticMeshBuffer", "VP", &VPF, sizeof(VPF));
 
 		renderer.Render();
+
+		planeWorldF = DirectX::XMMatrixTranspose( DirectX::XMMatrixTranslation(-5.0f, 0.0f, 0.0f));
+		DirectX::XMStoreFloat4x4(&planeWorld, planeWorldF);
+		renderer.updateConstantBuffer(true, "staticMeshBuffer", "W", &planeWorld, sizeof(planeWorld));
+		renderer.Render();
+
 		renderer.present();
     }
 	renderer.cleanup();
