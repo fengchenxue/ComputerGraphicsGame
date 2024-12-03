@@ -14,6 +14,16 @@ struct StaticVertex
 	DirectX::XMFLOAT2 uvCoords;
 };
 
+class Mesh {
+public:
+
+	//std::vector<StaticVertex> vertices;
+	//std::vector<unsigned int> indices;
+	int indeicesOffsets = 0;
+	int verticesOffsets = 0;
+};
+
+
 void ComputeTangent(DirectX::XMFLOAT3 normal, DirectX::XMFLOAT3& tangent);
 
 StaticVertex addVertex(DirectX::XMFLOAT3 position, DirectX::XMFLOAT3 normal, DirectX::XMFLOAT2 uvCoords);
