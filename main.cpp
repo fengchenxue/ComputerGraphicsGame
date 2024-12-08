@@ -121,38 +121,27 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	std::vector<GEMLoader::GEMMesh> gemmeshes;
 	GEMLoader::GEMAnimation gemanimation;
 
-	loader.load("Res/acacia_003.gem", gemmeshes);
 	//load the mesh and animation for NPC
-	//NPC npc;
-	//loader.load("Res/TRex.gem", gemmeshes, gemanimation);
-	////load meshes
-	//loadGEMMesh(gemmeshes,meshManager, npc.mesh);
-	////load skeleton
-	//loadSkeleton(gemanimation, npc.animation);
-	////load sequences
-	//loadAnimation(gemanimation, npc.animation);
-	Object obj;
-	loadGEMMesh(gemmeshes, meshManager, obj.mesh);
+	NPC npc;
+	loader.load("Res/TRex.gem", gemmeshes, gemanimation);
+	//load meshes
+	loadGEMMesh(gemmeshes,meshManager, npc.mesh);
+	//load skeleton
+	loadSkeleton(gemanimation, npc.animation);
+	//load sequences
+	loadAnimation(gemanimation, npc.animation);
+
 	
 
 	//update W
-	DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixScaling(0.01f, 0.01f, 0.01f));
+	DirectX::XMMATRIX scaleMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	//DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationY(timer.time()));
 	DirectX::XMMATRIX translationMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f));
 	DirectX::XMMATRIX planeWorld = translationMatrix * scaleMatrix;
-	//InstanceData_Dynamic instance;
-	InstanceData_Static instance;
+	InstanceData_Dynamic instance;
 	DirectX::XMStoreFloat4x4(&instance.W, planeWorld);
-	//meshManager.instances_Dynamic.push_back(instance);
-	meshManager.instances_Static.push_back(instance);
-
-	scaleMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixScaling(0.01f, 0.01f, 0.01f));
-	//DirectX::XMMATRIX rotationMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationY(timer.time()));
-	translationMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(5.0f, 0.0f, 0.0f));
-	planeWorld = translationMatrix * scaleMatrix;
-	DirectX::XMStoreFloat4x4(&instance.W, planeWorld);
-	//meshManager.instances_Dynamic.push_back(instance);
-	meshManager.instances_Static.push_back(instance);
+	meshManager.instances_Dynamic.push_back(instance);
+	
 
 	renderer.Initialize(window, meshManager);
 	float dt;
@@ -165,8 +154,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		dt = timer.dt();
 
 		//update bones
-		//npc.animationInstance.update("walk", dt);
-		//meshManager.updateBonesVector(npc.animationInstance.BonesTransforms);
+		npc.animationInstance.update("walk", dt);
+		meshManager.updateBonesVector(npc.animationInstance.BonesTransforms);
 		renderer.updateInstanceBuffer(meshManager.instances_Static, meshManager.instances_Dynamic,meshManager.bonesVector);
 
 		//update V
@@ -181,7 +170,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		float nearZ = 0.1f;
 		float farZ = 1000.0f;
 		DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovLH(fov, aspectRatio, nearZ, farZ));
-		//DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovLH(fov, aspectRatio, nearZ, farZ);
 		DirectX::XMMATRIX VP = projectionMatrix * viewMatrix;
 
 		DirectX::XMFLOAT4X4 VPF;

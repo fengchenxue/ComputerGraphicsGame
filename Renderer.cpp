@@ -106,7 +106,7 @@ void Renderer::InitializeShadersAndConstantBuffer()
 	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob_S;
 	HRESULT hr = D3DCompileFromFile(L"VertexShader_Static.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob_S.GetAddressOf(), nullptr);
 	if (FAILED(hr)) {
-		MessageBox(NULL, L"Failed to compile VertexShader_Dynamic.hlsl", L"Shader Error", MB_OK);
+		MessageBox(NULL, L"Failed to compile VertexShader_Static.hlsl", L"Shader Error", MB_OK);
 	}
 	device->CreateVertexShader(vsBlob_S->GetBufferPointer(), vsBlob_S->GetBufferSize(), nullptr, &vertexShader_Static);
 
@@ -315,13 +315,17 @@ void Renderer::initializeIndexAndVertexBuffer(std::vector<Vertex_Static>& vertic
 	//create dynamic index buffer
 	bd.ByteWidth = static_cast<UINT>(sizeof(unsigned int) * numIndics);
 	initData.pSysMem = indices_dynamic.data();
-	device->CreateBuffer(&bd, &initData, &indexBuffer_Dynamic);
-
+	HRESULT hr=device->CreateBuffer(&bd, &initData, &indexBuffer_Dynamic);
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to compile dynamic buffer.hlsl", L"Shader Error", MB_OK);
+	}
 	//create dynamic vertex buffer
 	bd.ByteWidth = static_cast<UINT>(vertexSizeInBytes * numVertics);
 	initData.pSysMem = vertices_dynamic.data();
-	device->CreateBuffer(&bd, &initData, &vertexBuffer_Dynamic);
-
+	hr=device->CreateBuffer(&bd, &initData, &vertexBuffer_Dynamic);
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to create dynamic buffer", L"Shader Error", MB_OK);
+	}
 }
 
 void Renderer::InitializeInstanceBuffer()
@@ -437,7 +441,7 @@ void Renderer::SwitchShader(bool _static)
 		UINT stride = sizeof(Vertex_Dynamic);
 		UINT offset = 0;
 		context->IASetVertexBuffers(0, 1, vertexBuffer_Dynamic.GetAddressOf(), &stride, &offset);
-		context->IASetIndexBuffer(indexBuffer_Static.Get(), DXGI_FORMAT_R32_UINT, 0);
+		context->IASetIndexBuffer(indexBuffer_Dynamic.Get(), DXGI_FORMAT_R32_UINT, 0);
 	}
 
 }
@@ -549,10 +553,10 @@ void Renderer::Render()
 {
 	updateConstantBufferManager();
 
-	SwitchShader(true);
-	context->DrawIndexedInstanced(indicesSize_Static, instanceSize_Static, 0, 0, 0);
-	//SwitchShader(false);
-	//context->DrawIndexedInstanced(indicesSize_Dynamic, instanceSize_Dynamic, 0, 0, 0);
+	//SwitchShader(true);
+	//context->DrawIndexedInstanced(indicesSize_Static, instanceSize_Static, 0, 0, 0);
+	SwitchShader(false);
+	context->DrawIndexedInstanced(indicesSize_Dynamic, instanceSize_Dynamic, 0, 0, 0);
 	
 }
 

@@ -1,5 +1,5 @@
 #include"ShaderStruct.hlsli"
-cbuffer cbVS_D : register(b1)
+cbuffer cbVS_D : register(b2)
 {
     float4x4 VP;
 };

@@ -78,7 +78,8 @@ void Animation::calcFinalTransformations(std::vector<DirectX::XMFLOAT4X4>& trans
 	for (int i = 0; i < skeleton.bones.size(); i++)
 	{
 		DirectX::XMMATRIX finalTransformation = DirectX::XMLoadFloat4x4(&transform[i]);
-		finalTransformation = skeleton.globalInverse* skeleton.bones[i].bindingOffset * finalTransformation;
+		//finalTransformation = skeleton.globalInverse* skeleton.bones[i].bindingOffset * finalTransformation;
+		finalTransformation = finalTransformation * skeleton.bones[i].bindingOffset * skeleton.globalInverse;
 		DirectX::XMStoreFloat4x4(&transform[i], finalTransformation);
 	}
 }
