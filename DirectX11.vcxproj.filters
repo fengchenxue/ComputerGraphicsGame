@@ -13,13 +13,22 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="Source Files\HLSL">
+      <UniqueIdentifier>{7f5a8aee-61db-49a1-ba4c-4d976e0c20d4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="VertexShader.hlsl">
-      <Filter>Source Files</Filter>
+    <FxCompile Include="PixelShader_Static.hlsl">
+      <Filter>Source Files\HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="PixelShader.hlsl">
-      <Filter>Source Files</Filter>
+    <FxCompile Include="VertexShader_Static.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelShader_Dynamic.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexShader_Dynamic.hlsl">
+      <Filter>Source Files\HLSL</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
@@ -35,7 +44,7 @@
     <ClCompile Include="Vertex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FBXLoader.cpp">
+    <ClCompile Include="Object.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -52,16 +61,16 @@
     <ClInclude Include="Vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FBXLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GEMLoader.h">
       <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="ShaderStruct.hlsli">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\HLSL</Filter>
     </None>
   </ItemGroup>
 </Project>

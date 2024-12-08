@@ -2,8 +2,6 @@
 #include <d3dcompiler.h>
 #include <vector>
 
-
-
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -57,8 +55,12 @@ void Renderer::InitializeRenderTarget(Window& window)
 {
 	//get the back buffer and its render target view
 	swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)backbuffer.GetAddressOf());
-	device->CreateRenderTargetView(backbuffer.Get(), NULL, backbufferRenderTargetView.GetAddressOf());
-
+	HRESULT hr = device->CreateRenderTargetView(backbuffer.Get(), NULL, backbufferRenderTargetView.GetAddressOf());
+	if (FAILED(hr))
+	{
+		MessageBox(NULL, L"Failed to create render target view", L"Error", MB_OK);
+		exit(0);
+	}
 	//create configuration for depth buffer
 	D3D11_TEXTURE2D_DESC dbd = {};
 	dbd.Width = window.width;
@@ -79,7 +81,11 @@ void Renderer::InitializeRenderTarget(Window& window)
 
 	//send command to GPU for rendering
 	context->OMSetRenderTargets(1, backbufferRenderTargetView.GetAddressOf(), depthStencilView.Get());
-
+	if (!backbufferRenderTargetView || !depthStencilView)
+	{
+		MessageBox(NULL, L"Failed to set render target view", L"Error", MB_OK);
+		exit(0);
+	}
 	//create configuration for Viewport
 	D3D11_VIEWPORT viewport = {};
 	viewport.Width = static_cast<float>(window.width);
@@ -95,31 +101,68 @@ void Renderer::InitializeRenderTarget(Window& window)
 
 void Renderer::InitializeShadersAndConstantBuffer()
 {
+	//-----------static shaders----------------//
 	//compile vertex shader and store it in vsBlob,then create vertex shader
-	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
-	D3DCompileFromFile(L"VertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob.GetAddressOf(), nullptr);
-	device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader);
+	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob_S;
+	HRESULT hr = D3DCompileFromFile(L"VertexShader_Static.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob_S.GetAddressOf(), nullptr);
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to compile VertexShader_Dynamic.hlsl", L"Shader Error", MB_OK);
+	}
+	device->CreateVertexShader(vsBlob_S->GetBufferPointer(), vsBlob_S->GetBufferSize(), nullptr, &vertexShader_Static);
 
 	//create input layout
-	D3D11_INPUT_ELEMENT_DESC layout[] = {
+	D3D11_INPUT_ELEMENT_DESC layout_S[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
-	device->CreateInputLayout(layout, 4, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &inputLayout);
-
+	device->CreateInputLayout(layout_S, _countof(layout_S), vsBlob_S->GetBufferPointer(), vsBlob_S->GetBufferSize(), &inputLayout_Static);
 
 	//compile pixel shader and store it in psBlob,then create pixel shader
-	Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
-	D3DCompileFromFile(L"PixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, psBlob.GetAddressOf(), nullptr);
-	device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
+	Microsoft::WRL::ComPtr<ID3DBlob> psBlob_S;
+	hr=D3DCompileFromFile(L"PixelShader_Static.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, psBlob_S.GetAddressOf(), nullptr);
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to compile PixelShader_Static.hlsl", L"Shader Error", MB_OK);
+	}
+	device->CreatePixelShader(psBlob_S->GetBufferPointer(), psBlob_S->GetBufferSize(), nullptr, &pixelShader_Static);
 
-	//set the shaders
-	context->VSSetShader(vertexShader.Get(), NULL, 0);
-	context->PSSetShader(pixelShader.Get(), NULL, 0);
+	//-----------dynamic shaders----------------//
+	//compile vertex shader and store it in vsBlob,then create vertex shader
+	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob_D;
+	hr=D3DCompileFromFile(L"VertexShader_Dynamic.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob_D.GetAddressOf(), nullptr);
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to compile VertexShader_Dynamic.hlsl", L"Shader Error", MB_OK);
+	}
+	device->CreateVertexShader(vsBlob_D->GetBufferPointer(), vsBlob_D->GetBufferSize(), nullptr, &vertexShader_Dynamic);
 
-	//---------VS constant buffer creation----------------//
+	//create input layout
+	D3D11_INPUT_ELEMENT_DESC layout_D[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{"BONEIDS",0,DXGI_FORMAT_R32G32B32A32_UINT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0},
+		{"BONEWEIGHTS",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA,0}
+	};
+	device->CreateInputLayout(layout_D, _countof(layout_D), vsBlob_D->GetBufferPointer(), vsBlob_D->GetBufferSize(), &inputLayout_Dynamic);
+
+	//compile pixel shader and store it in psBlob,then create pixel shader
+	Microsoft::WRL::ComPtr<ID3DBlob> psBlob_D;
+	hr=D3DCompileFromFile(L"PixelShader_Dynamic.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, psBlob_D.GetAddressOf(), nullptr);
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to compile PixelShader_Dynamic.hlsl", L"Shader Error", MB_OK);
+	}
+	device->CreatePixelShader(psBlob_D->GetBufferPointer(), psBlob_D->GetBufferSize(), nullptr, &pixelShader_Dynamic);
+
+	//create constant buffer
+	InitializeConstantBuffer(vsBlob_S, psBlob_S);
+	InitializeConstantBuffer(vsBlob_D, psBlob_D);
+}
+
+void Renderer::InitializeConstantBuffer(Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, Microsoft::WRL::ComPtr<ID3DBlob> psBlob)
+{
+	//--------- VS constant buffer creation----------------//
 	//create shader reflection from the pixel shader
 	Microsoft::WRL::ComPtr<ID3D11ShaderReflection> VSreflection;
 	D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), __uuidof(ID3D11ShaderReflection), (void**)VSreflection.GetAddressOf());
@@ -134,7 +177,7 @@ void Renderer::InitializeShadersAndConstantBuffer()
 		reflectionConstantBuffer->GetDesc(&sbd);
 
 		//create a constant buffer manager for each constant buffer
-		ConstantBufferManager_single constantBufferManager;
+		ConstantBufferManager constantBufferManager;
 		constantBufferManager.name = sbd.Name;
 
 		//Store total size of the constant buffer
@@ -174,7 +217,7 @@ void Renderer::InitializeShadersAndConstantBuffer()
 		//store the constant buffer manager in the vector
 		VSconstantBufferManager_collection.push_back(constantBufferManager);
 
-		context->VSSetConstantBuffers(i, 1, constantBuffer.GetAddressOf());
+		context->VSSetConstantBuffers(i + static_cast<UINT>(VSConstantBufferDynamicOffset), 1, constantBuffer.GetAddressOf());
 	}
 
 	//---------PS constant buffer creation----------------//
@@ -192,7 +235,7 @@ void Renderer::InitializeShadersAndConstantBuffer()
 		reflectionConstantBuffer->GetDesc(&sbd);
 
 		//create a constant buffer manager for each constant buffer
-		ConstantBufferManager_single constantBufferManager;
+		ConstantBufferManager constantBufferManager;
 		constantBufferManager.name = sbd.Name;
 
 		//Store total size of the constant buffer
@@ -232,49 +275,171 @@ void Renderer::InitializeShadersAndConstantBuffer()
 		//store the constant buffer manager in the vector
 		PSconstantBufferManager_collection.push_back(constantBufferManager);
 
-		context->PSSetConstantBuffers(i, 1, constantBuffer.GetAddressOf());
+		context->PSSetConstantBuffers(i + static_cast<UINT>(PSConstantBufferDynamicOffset), 1, constantBuffer.GetAddressOf());
+	}
+	if (VSConstantBufferDynamicOffset == 0 && PSConstantBufferDynamicOffset == 0)
+	{
+		VSConstantBufferDynamicOffset = VSconstantBufferManager_collection.size();
+		PSConstantBufferDynamicOffset = PSconstantBufferManager_collection.size();
 	}
 }
 
-void Renderer::initializeIndexAndVertexBuffer(void* vertics, int vertexSizeInBytes, size_t numVertics, unsigned int* indices, size_t numIndics)
+void Renderer::initializeIndexAndVertexBuffer(std::vector<Vertex_Static>& vertices_Static, std::vector<unsigned int>& indices_Static, std::vector<Vertex_Dynamic>& vertices_dynamic, std::vector<unsigned int>& indices_dynamic)
 {
-	//create index buffer
+	//-------initialize the static buffer----------------//
+	int vertexSizeInBytes = sizeof(Vertex_Static);
+	size_t numVertics = vertices_Static.size();
+	UINT numIndics = static_cast<UINT>(indices_Static.size());
+	indicesSize_Static = numIndics;
+	//create static index buffer
 	D3D11_BUFFER_DESC bd = {};
 	bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = static_cast<UINT>(sizeof(unsigned int) * numIndics);
+	bd.ByteWidth = static_cast<UINT>(sizeof(unsigned int) * numIndics);
 	bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
 	D3D11_SUBRESOURCE_DATA initData = {};
-	initData.pSysMem = indices;
-	device->CreateBuffer(&bd, &initData, &indexBuffer);
+	initData.pSysMem = indices_Static.data();
+	device->CreateBuffer(&bd, &initData, &indexBuffer_Static);
 
-	//create vertex buffer
-    bd.ByteWidth = static_cast<UINT>(vertexSizeInBytes * numVertics);
+	//create static vertex buffer
+	bd.ByteWidth = static_cast<UINT>(vertexSizeInBytes * numVertics);
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	initData.pSysMem = vertics;
-	device->CreateBuffer(&bd, &initData, &vertexBuffer);
+	initData.pSysMem = vertices_Static.data();
+	device->CreateBuffer(&bd, &initData, &vertexBuffer_Static);
+
+
+	//-------initialize the dynamic buffer----------------//
+	vertexSizeInBytes = sizeof(Vertex_Dynamic);
+	numVertics = vertices_dynamic.size();
+	numIndics = static_cast<UINT>(indices_dynamic.size());
+	indicesSize_Dynamic = numIndics;
+	//create dynamic index buffer
+	bd.ByteWidth = static_cast<UINT>(sizeof(unsigned int) * numIndics);
+	initData.pSysMem = indices_dynamic.data();
+	device->CreateBuffer(&bd, &initData, &indexBuffer_Dynamic);
+
+	//create dynamic vertex buffer
+	bd.ByteWidth = static_cast<UINT>(vertexSizeInBytes * numVertics);
+	initData.pSysMem = vertices_dynamic.data();
+	device->CreateBuffer(&bd, &initData, &vertexBuffer_Dynamic);
+
+}
+
+void Renderer::InitializeInstanceBuffer()
+{
+	//custom buffer size, you can change it
+	UINT bufferSize = 10;
+	//initialize the static instance buffer
+	D3D11_BUFFER_DESC id = {};
+	id.Usage = D3D11_USAGE_DYNAMIC;
+	id.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	id.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	id.ByteWidth = sizeof(InstanceData_Static) * bufferSize;
+	id.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	id.StructureByteStride = sizeof(InstanceData_Static);
+	device->CreateBuffer(&id, nullptr, &instanceBuffer_Static);
+
+	//initialize the dynamic instance buffer
+	id.ByteWidth = sizeof(InstanceData_Dynamic) * bufferSize;
+	id.StructureByteStride = sizeof(InstanceData_Dynamic);
+	device->CreateBuffer(&id, nullptr, &instanceBuffer_Dynamic);
+
+	//create shader resource view for the instance buffer
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvd = {};
+	srvd.Format = DXGI_FORMAT_UNKNOWN;
+	srvd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	srvd.Buffer.FirstElement = 0;
+	srvd.Buffer.NumElements = bufferSize;
+	device->CreateShaderResourceView(instanceBuffer_Static.Get(), &srvd, SRV_Static.GetAddressOf());
+	device->CreateShaderResourceView(instanceBuffer_Dynamic.Get(), &srvd, SRV_Dynamic.GetAddressOf());
+
+	//bind the instance buffer to the vertex shader
+	context->VSSetShaderResources(0, 1, SRV_Static.GetAddressOf());
+	context->VSSetShaderResources(1, 1, SRV_Dynamic.GetAddressOf());
+
+	//create texture to store the bones data
+	D3D11_TEXTURE2D_DESC td = {};
+	td.Width = 256 * 4;
+	td.Height = 10;
+	td.MipLevels = 1;
+	td.ArraySize = 1;
+	td.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	td.SampleDesc.Count = 1;
+	td.SampleDesc.Quality = 0;
+	td.Usage = D3D11_USAGE_DYNAMIC;
+	td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	device->CreateTexture2D(&td, nullptr, bonesTexture.GetAddressOf());
+
+	//create shader resource view for the bones texture
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvd2 = {};
+	srvd2.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	srvd2.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvd2.Texture2D.MostDetailedMip = 0;
+	srvd2.Texture2D.MipLevels = 1;
+	device->CreateShaderResourceView(bonesTexture.Get(), &srvd2, bonesSRV.GetAddressOf());
 	
-	indicesSize = numIndics;
-	stride = vertexSizeInBytes;
+	//bind the bones data to the vertex shader
+	context->VSSetShaderResources(2, 1, bonesSRV.GetAddressOf());
 }
 
-void Renderer::initializeIndexAndVertexBuffer(std::vector<StaticVertex> vertices, std::vector<unsigned int> indices)
+void Renderer::InitializeState()
 {
-	initializeIndexAndVertexBuffer(vertices.data(), sizeof(StaticVertex), vertices.size(), indices.data(), indices.size());
+	//create configuration for rasterizer state
+	D3D11_RASTERIZER_DESC rd = {};
+	rd.FillMode = D3D11_FILL_SOLID;
+	rd.CullMode = D3D11_CULL_NONE;
+	device->CreateRasterizerState(&rd, rasterizerState.GetAddressOf());
+	//apply the configuration to the context
+	context->RSSetState(rasterizerState.Get());
+
+	//create configuration for depth stencil state
+	D3D11_DEPTH_STENCIL_DESC dsd = {};
+	dsd.DepthEnable = true;
+	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsd.DepthFunc = D3D11_COMPARISON_LESS;
+	dsd.StencilEnable = false;
+	//create depth stencil state and bind it to output merger stage
+	device->CreateDepthStencilState(&dsd, depthStencilState.GetAddressOf());
+	context->OMSetDepthStencilState(depthStencilState.Get(), 0);
+
+	////create configuration for blend state
+	//D3D11_BLEND_DESC bd = {};
+	//device->CreateBlendState(&bd, blendState.GetAddressOf());
+	////apply the configuration to the context
+	//context->OMSetBlendState(blendState.Get(), 0, 0xffffffff);
 }
 
-void Renderer::BindIndexAndVertexBuffer()
+void Renderer::SwitchShader(bool _static)
 {
-	//set the primitive topology
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	if (_static) {
+		//set the input layout
+		context->IASetInputLayout(inputLayout_Static.Get());
+		//set the shaders
+		context->VSSetShader(vertexShader_Static.Get(), NULL, 0);
+		context->PSSetShader(pixelShader_Static.Get(), NULL, 0);
+		//set the primitive topology
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		//set the vertex and index buffer
+		UINT stride = sizeof(Vertex_Static);
+		UINT offset = 0;
+		context->IASetVertexBuffers(0, 1, vertexBuffer_Static.GetAddressOf(), &stride, &offset);
+		context->IASetIndexBuffer(indexBuffer_Static.Get(), DXGI_FORMAT_R32_UINT, 0);
+	}
+	else {
+		//set the input layout
+		context->IASetInputLayout(inputLayout_Dynamic.Get());
+		//set the shaders
+		context->VSSetShader(vertexShader_Dynamic.Get(), NULL, 0);
+		context->PSSetShader(pixelShader_Dynamic.Get(), NULL, 0);
+		//set the primitive topology
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		//set the vertex and index buffer
+		UINT stride = sizeof(Vertex_Dynamic);
+		UINT offset = 0;
+		context->IASetVertexBuffers(0, 1, vertexBuffer_Dynamic.GetAddressOf(), &stride, &offset);
+		context->IASetIndexBuffer(indexBuffer_Static.Get(), DXGI_FORMAT_R32_UINT, 0);
+	}
 
-	//set the vertex and index buffer
-	UINT offset = 0;
-	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-
-	//set the input layout
-	context->IASetInputLayout(inputLayout.Get());
 }
 
 void Renderer::updateConstantBufferManager()
@@ -343,55 +508,57 @@ void Renderer::updateConstantBuffer(bool VSBuffer, std::string bufferName, std::
 	}
 }
 
+void Renderer::updateInstanceBuffer(std::vector<InstanceData_Static>& instances_Static, std::vector<InstanceData_Dynamic>& instances_Dynamic, std::vector<float> &bonesVector)
+{
+	instanceSize_Static = static_cast<UINT>(instances_Static.size());
+	instanceSize_Dynamic = static_cast<UINT>(instances_Dynamic.size());
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	if (instanceSize_Static)
+	{
+		context->Map(instanceBuffer_Static.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, instances_Static.data(), sizeof(InstanceData_Static) * instanceSize_Static);
+		context->Unmap(instanceBuffer_Static.Get(), 0);
+	}
+	if (instanceSize_Dynamic) 
+	{
 
-void Renderer::Initialize(Window& window, std::vector<StaticVertex> vertices, std::vector<unsigned int> indices)
+        context->Map(instanceBuffer_Dynamic.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+        memcpy(mappedResource.pData, instances_Dynamic.data(), sizeof(InstanceData_Dynamic) * instanceSize_Dynamic);
+        context->Unmap(instanceBuffer_Dynamic.Get(), 0);
+	}
+	if (bonesVector.size())
+	{
+		context->Map(bonesTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		memcpy(mappedResource.pData, bonesVector.data(), sizeof(float) * bonesVector.size());
+		context->Unmap(bonesTexture.Get(), 0);
+	}
+}
+
+
+void Renderer::Initialize(Window& window, MeshManager& meshmanager)
 {
 	InitializeDeviceAndContext(window);
 	InitializeRenderTarget(window);
 	InitializeShadersAndConstantBuffer();
-	initializeIndexAndVertexBuffer(vertices, indices);
-	BindIndexAndVertexBuffer();
-
-	//create configuration for rasterizer state
-	D3D11_RASTERIZER_DESC rd = {};
-	rd.FillMode = D3D11_FILL_SOLID;
-	rd.CullMode = D3D11_CULL_NONE;
-	device->CreateRasterizerState(&rd, rasterizerState.GetAddressOf());
-	//apply the configuration to the context
-	context->RSSetState(rasterizerState.Get());
-
-	//create configuration for depth stencil state
-	D3D11_DEPTH_STENCIL_DESC dsd = {};
-	dsd.DepthEnable = true;
-	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-	dsd.DepthFunc = D3D11_COMPARISON_LESS;
-	dsd.StencilEnable = false;
-	//create depth stencil state and bind it to output merger stage
-	device->CreateDepthStencilState(&dsd, depthStencilState.GetAddressOf());
-	context->OMSetDepthStencilState(depthStencilState.Get(), 0);
-
-	////create configuration for blend state
-	//D3D11_BLEND_DESC bd = {};
-	//device->CreateBlendState(&bd, blendState.GetAddressOf());
-	////apply the configuration to the context
-	//context->OMSetBlendState(blendState.Get(), 0, 0xffffffff);
-
-
+	initializeIndexAndVertexBuffer(meshmanager.vertices_Static, meshmanager.indices_Static, meshmanager.vertices_Dynamic, meshmanager.indices_Dynamic);
+	InitializeInstanceBuffer();
+	InitializeState();
 }
 
 void Renderer::Render()
 {
 	updateConstantBufferManager();
 
-	//draw the vertex buffer
-	//context->Draw(4, 0);
-    context->DrawIndexed(static_cast<UINT>(indicesSize), 0, 0);
-
+	SwitchShader(true);
+	context->DrawIndexedInstanced(indicesSize_Static, instanceSize_Static, 0, 0, 0);
+	//SwitchShader(false);
+	//context->DrawIndexedInstanced(indicesSize_Dynamic, instanceSize_Dynamic, 0, 0, 0);
+	
 }
 
 void Renderer::cleanFrame()
 {
-	float clearColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	float clearColor[] = { 0.0f, 0.2f, 0.2f, 1.0f };
 	context->ClearRenderTargetView(backbufferRenderTargetView.Get(), clearColor);
 	context->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
@@ -399,15 +566,15 @@ void Renderer::cleanFrame()
 void Renderer::cleanup()
 {
 	//release all the resources
-	vertexBuffer.Reset();
+	vertexBuffer_Static.Reset();
 	for (auto& manager : PSconstantBufferManager_collection)
 	{
 		manager.constantBuffer.Reset();
 	}
 	PSconstantBufferManager_collection.clear();
-	inputLayout.Reset();
-	vertexShader.Reset();
-	pixelShader.Reset();
+	inputLayout_Static.Reset();
+	vertexShader_Static.Reset();
+	pixelShader_Static.Reset();
 	depthStencilView.Reset();
 	depthbuffer.Reset();
 	backbufferRenderTargetView.Reset();
