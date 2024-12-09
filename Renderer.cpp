@@ -163,7 +163,7 @@ void Renderer::InitializeShadersAndConstantBuffer()
 void Renderer::InitializeConstantBuffer(Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, Microsoft::WRL::ComPtr<ID3DBlob> psBlob)
 {
 	//--------- VS constant buffer creation----------------//
-	//create shader reflection from the pixel shader
+	//create shader reflection from the vertex shader
 	Microsoft::WRL::ComPtr<ID3D11ShaderReflection> VSreflection;
 	D3DReflect(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), __uuidof(ID3D11ShaderReflection), (void**)VSreflection.GetAddressOf());
 	//get the shader description 
@@ -282,6 +282,17 @@ void Renderer::InitializeConstantBuffer(Microsoft::WRL::ComPtr<ID3DBlob> vsBlob,
 		VSConstantBufferDynamicOffset = VSconstantBufferManager_collection.size();
 		PSConstantBufferDynamicOffset = PSconstantBufferManager_collection.size();
 	}
+
+	//--------get the shader reflection from the pixel shader, for texture binding points--------//
+	for (int i = 0; i < sdc.BoundResources; ++i)
+	{
+		D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+		PSreflection->GetResourceBindingDesc(i, &bindDesc);
+		if (bindDesc.Type == D3D_SIT_TEXTURE)
+		{
+			textureBindPoints.insert({ bindDesc.Name,bindDesc.BindPoint });
+		}
+	}
 }
 
 void Renderer::initializeIndexAndVertexBuffer(std::vector<Vertex_Static>& vertices_Static, std::vector<unsigned int>& indices_Static, std::vector<Vertex_Dynamic>& vertices_dynamic, std::vector<unsigned int>& indices_dynamic)
@@ -353,12 +364,12 @@ void Renderer::InitializeInstanceBuffer()
 	srvd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 	srvd.Buffer.FirstElement = 0;
 	srvd.Buffer.NumElements = bufferSize;
-	device->CreateShaderResourceView(instanceBuffer_Static.Get(), &srvd, SRV_Static.GetAddressOf());
-	device->CreateShaderResourceView(instanceBuffer_Dynamic.Get(), &srvd, SRV_Dynamic.GetAddressOf());
+	device->CreateShaderResourceView(instanceBuffer_Static.Get(), &srvd, VS_SRV_Static.GetAddressOf());
+	device->CreateShaderResourceView(instanceBuffer_Dynamic.Get(), &srvd, VS_SRV_Dynamic.GetAddressOf());
 
 	//bind the instance buffer to the vertex shader
-	context->VSSetShaderResources(0, 1, SRV_Static.GetAddressOf());
-	context->VSSetShaderResources(1, 1, SRV_Dynamic.GetAddressOf());
+	context->VSSetShaderResources(0, 1, VS_SRV_Static.GetAddressOf());
+	context->VSSetShaderResources(1, 1, VS_SRV_Dynamic.GetAddressOf());
 
 	//create texture to store the bones data
 	D3D11_TEXTURE2D_DESC td = {};
@@ -411,6 +422,21 @@ void Renderer::InitializeState()
 	//device->CreateBlendState(&bd, blendState.GetAddressOf());
 	////apply the configuration to the context
 	//context->OMSetBlendState(blendState.Get(), 0, 0xffffffff);
+}
+
+void Renderer::InitializeSampler()
+{
+	//create configuration for sampler
+	D3D11_SAMPLER_DESC sd = {};
+	sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sd.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sd.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sd.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sd.MinLOD = 0;
+	sd.MaxLOD = D3D11_FLOAT32_MAX;
+	//create sampler and bind it to pixel shader
+	device->CreateSamplerState(&sd, sampler.GetAddressOf());
+	context->PSSetSamplers(0, 1, sampler.GetAddressOf());
 }
 
 void Renderer::SwitchShader(bool _static)
@@ -547,6 +573,7 @@ void Renderer::Initialize(Window& window, MeshManager& meshmanager)
 	initializeIndexAndVertexBuffer(meshmanager.vertices_Static, meshmanager.indices_Static, meshmanager.vertices_Dynamic, meshmanager.indices_Dynamic);
 	InitializeInstanceBuffer();
 	InitializeState();
+	InitializeSampler();
 }
 
 void Renderer::Render()
@@ -592,4 +619,64 @@ void Renderer::cleanup()
 void Renderer::present()
 {
 	swapChain->Present(0, 0);
+}
+
+void Renderer::loadTexture(std::string filename, std::string textureShaderName)
+{
+	
+	int width, height, channels;
+	unsigned char* texels = stbi_load(filename.c_str(), &width, &height, &channels, 0);
+	unsigned char* texelsWithAlpha;
+	if (channels == 3) {
+		channels = 4;
+		texelsWithAlpha = new unsigned char[width * height * channels];
+		for (int i = 0; i < width * height; i++) {
+			texelsWithAlpha[i * 4 + 0] = texels[i * 3];
+			texelsWithAlpha[i * 4 + 1] = texels[i * 3 + 1];
+			texelsWithAlpha[i * 4 + 2] = texels[i * 3 + 2];
+			texelsWithAlpha[i * 4 + 3] = 255;
+		}
+	}
+	else {
+		texelsWithAlpha = texels;
+	}
+
+	//initialize texture description
+	D3D11_TEXTURE2D_DESC td = {};
+	td.Width = width;
+	td.Height = height;
+	td.MipLevels = 1;
+	td.ArraySize = 1;
+	td.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	td.SampleDesc.Count = 1;
+	td.SampleDesc.Quality = 0;
+	td.Usage = D3D11_USAGE_DEFAULT;
+	td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	td.CPUAccessFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = texelsWithAlpha;
+	initData.SysMemPitch = width * channels;
+
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+	device->CreateTexture2D(&td, &initData, texture.GetAddressOf());
+
+	//create shader resource view for the texture
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvd = {};
+	srvd.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	srvd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvd.Texture2D.MostDetailedMip = 0;
+	srvd.Texture2D.MipLevels = 1;
+	
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+	device->CreateShaderResourceView(texture.Get(), &srvd, srv.GetAddressOf());
+
+	textureMap[textureShaderName] = { texture,srv };
+
+	context->PSSetShaderResources(textureBindPoints[textureShaderName], 1, srv.GetAddressOf());
+
+	if (texelsWithAlpha != texels) {
+		delete[] texelsWithAlpha;
+	}
+	stbi_image_free(texels);
 }

@@ -4,8 +4,8 @@ cbuffer cbVS_D : register(b2)
     float4x4 VP;
 };
 StructuredBuffer<VS_INSTANCE_DYNAMIC> InstanceBuffer : register(t1);
-
 Texture2D<float4> BoneTransformsTexture:register(t2);
+
 
 float4x4 getBoneTransform(uint BoneID,uint instanceID)
 {

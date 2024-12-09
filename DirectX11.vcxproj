@@ -171,6 +171,7 @@
   <ItemGroup>
     <ClInclude Include="Object.h" />
     <ClInclude Include="GEMLoader.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Vertex.h" />

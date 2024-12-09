@@ -49,7 +49,25 @@ public:
 	size_t indeicesOffsets = 0;
 	size_t verticesOffsets = 0;
 };
+struct MaterialProperty {
+	std::string name;
+	std::string filePath;
+};
+struct Material {
+	std::vector<MaterialProperty> properties;
+	MaterialProperty find(std::string name)
+	{
+		for (int i = 0; i < properties.size(); i++)
+		{
+			if (properties[i].name == name)
+			{
+				return properties[i];
+			}
+		}
+		return MaterialProperty();
+	}
 
+};
 class MeshManager {
 public:
 	std::vector<Vertex_Static> vertices_Static;
@@ -60,8 +78,9 @@ public:
 	std::vector<unsigned int> indices_Dynamic;
 	std::vector<InstanceData_Dynamic> instances_Dynamic;
 	std::vector<float> bonesVector = std::vector<float>(256 * 16 * 10);
-
-	void updateBonesVector(std::vector<DirectX::XMFLOAT4X4> & BonesTransforms);
+	//
+	std::map<std::string, Material> materials;
+	void updateBonesVector(std::vector<DirectX::XMFLOAT4X4>& BonesTransforms);
 };
 
 struct AnimationFrame {

@@ -5,6 +5,7 @@
 #include<wrl.h>
 #include<d3d11shader.h>
 #include<map>
+#include "stb_image.h"
 
 class Renderer {
 private:
@@ -48,7 +49,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader_Static;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader_Static;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> instanceBuffer_Static;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SRV_Static;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> VS_SRV_Static;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer_Static;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer_Static;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout_Static;
@@ -59,17 +60,25 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader_Dynamic;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader_Dynamic;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> instanceBuffer_Dynamic;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SRV_Dynamic;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> VS_SRV_Dynamic;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer_Dynamic;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer_Dynamic;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout_Dynamic;
 	//used in transferring bone data to GPU
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bonesSRV;
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> bonesTexture;
-	std::vector<float> bonesTransformData = std::vector<float>(256 * 16);
 	//used in DrawIndexedInstanced
 	UINT indicesSize_Dynamic = 0;
 	UINT instanceSize_Dynamic = 0;
+
+	//used in transferring texture data to GPU
+	std::map<std::string, int> textureBindPoints;
+	struct TextureData {
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+	};
+	std::map<std::string, TextureData> textureMap;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
 
 	void InitializeDeviceAndContext(Window& window);
 	void InitializeRenderTarget(Window&window);
@@ -78,6 +87,7 @@ private:
 	void initializeIndexAndVertexBuffer(std::vector<Vertex_Static> &vertices_Static,std::vector<unsigned int>& indices_Static, std::vector<Vertex_Dynamic> &vertices_dynamic, std::vector<unsigned int> &indices_dynamic);
 	void InitializeInstanceBuffer();
 	void InitializeState();
+	void InitializeSampler();
 
 	void SwitchShader(bool _static);
 	void updateConstantBufferManager();
@@ -101,5 +111,6 @@ public:
 	//call every frame
 	void present();
 
+	void loadTexture(std::string filename, std::string textureShaderName);
 
 };

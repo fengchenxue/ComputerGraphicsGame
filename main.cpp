@@ -7,6 +7,8 @@
 #include <sstream>
 #include <string>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 extern "C" {
 	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -46,6 +48,13 @@ void loadGEMMesh(std::vector<GEMLoader::GEMMesh>& gemmeshes, MeshManager&meshMan
 			{
 				meshManager.indices_Dynamic.push_back(index + static_cast<unsigned int>(mesh.verticesOffsets));
 			}
+			Material material;
+			for (auto& prop : gemmesh.material.properties) {
+
+				material.properties.push_back({ prop.name, prop.value });
+			}
+			//---------------------------------------need to find name
+			meshManager.materials["1"] = material;
 		}
 		else
 		{
@@ -63,6 +72,13 @@ void loadGEMMesh(std::vector<GEMLoader::GEMMesh>& gemmeshes, MeshManager&meshMan
 			{
 				meshManager.indices_Static.push_back(index + static_cast<unsigned int>(mesh.verticesOffsets));
 			}
+			Material material;
+			for (auto& prop : gemmesh.material.properties) {
+
+				material.properties.push_back({ prop.name, prop.value });
+			}
+			//---------------------------------------need to find name
+			meshManager.materials["1"] = material;
 		}
 	}
 }
@@ -109,6 +125,7 @@ void loadAnimation(GEMLoader::GEMAnimation& gemanimation, Animation& animation) 
 		animation.sequences[sequence.name] = seq;
 	}
 }
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
 	//initialize the window, timer, renderer, meshManager, loader, gemmeshes, gemanimation
@@ -130,7 +147,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	loadSkeleton(gemanimation, npc.animation);
 	//load sequences
 	loadAnimation(gemanimation, npc.animation);
-
+	
 	
 
 	//update W
@@ -142,8 +159,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	DirectX::XMStoreFloat4x4(&instance.W, planeWorld);
 	meshManager.instances_Dynamic.push_back(instance);
 	
-
 	renderer.Initialize(window, meshManager);
+
+	//initialize texture
+	renderer.loadTexture(meshManager.materials["1"].find("diffuse").filePath, "tex_D");
+
 	float dt;
     while (true)
     {
