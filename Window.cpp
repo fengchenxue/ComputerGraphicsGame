@@ -1,21 +1,46 @@
 #include "window.h"
 
+
 #define WINDOW_GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
 #define WINDOW_GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	Window* window = nullptr;
+    Window* window = (Window*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
     switch (msg) {
     case WM_CREATE:
-		window = (Window*)((CREATESTRUCT*)lParam)->lpCreateParams;
+    {
+        CREATESTRUCT* cs = (CREATESTRUCT*)lParam;
+        window = (Window*)cs->lpCreateParams;
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)window);
         break;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
     case WM_CLOSE:
         PostQuitMessage(0);
         break;
+    case WM_INPUT:
+	{
+		UINT dwSize = sizeof(RAWINPUT);
+		static BYTE lpb[sizeof(RAWINPUT)];
+
+		GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
+
+		RAWINPUT* raw = (RAWINPUT*)lpb;
+
+		if (raw->header.dwType == RIM_TYPEMOUSE)
+		{
+			window->updateMouse(raw->data.mouse.lLastX, raw->data.mouse.lLastY);
+		}
+        break;
+	}
+
     case WM_KEYDOWN:
+        if (wParam == VK_ESCAPE) {
+            PostQuitMessage(0);
+        }
         if (window) {
             window->keys[wParam] = true;
         }
@@ -28,7 +53,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_LBUTTONDOWN:
     {
         if (window) {
-            window->updateMouse(WINDOW_GET_X_LPARAM(lParam), WINDOW_GET_Y_LPARAM(lParam));
+           // window->updateMouse(WINDOW_GET_X_LPARAM(lParam), WINDOW_GET_Y_LPARAM(lParam));
             window->mouseButtons[0] = true;
         }
         break;
@@ -36,17 +61,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_LBUTTONUP:
     {
         if (window) {
-			window->updateMouse(WINDOW_GET_X_LPARAM(lParam), WINDOW_GET_Y_LPARAM(lParam));
+			//window->updateMouse(WINDOW_GET_X_LPARAM(lParam), WINDOW_GET_Y_LPARAM(lParam));
             window->mouseButtons[0] = false;
         }
         break;
     }
-    case WM_MOUSEMOVE:
-    {
-		if (window)window->updateMouse(WINDOW_GET_X_LPARAM(lParam), WINDOW_GET_Y_LPARAM(lParam));
-        
-        break;
-    }
+  //  case WM_MOUSEMOVE:
+  //  {
+		////if (window)window->updateMouse(WINDOW_GET_X_LPARAM(lParam), WINDOW_GET_Y_LPARAM(lParam));
+  //      break;
+  //  }
 
     default:
         return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -57,9 +81,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 void Window::updateMouse(int x, int y)
 {
-    mousex = x;
-    mousey = y;
+	//float dx = static_cast<float>( x - mousex ) * sensitivity;
+	//float dy = static_cast<float>( y - mousey ) * sensitivity;
+ //   player->updateCamera(dx, dy);
 
+ //   mousex = x;
+ //   mousey = y;
+
+    float dx = static_cast<float>(x) * sensitivity;
+    float dy = static_cast<float>(y) * sensitivity;
+    player->updateCamera(dx, dy);
 }
 
 void Window::create(int window_width, int window_height)
@@ -86,6 +117,13 @@ void Window::create(int window_width, int window_height)
     hwnd = CreateWindowEx(WS_EX_APPWINDOW, L"WindowClass", L"Game", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 
         0, 0, width, height, NULL, NULL, hinstance, this);
 
+	//register raw input
+    RAWINPUTDEVICE rid;
+	rid.usUsagePage = 0x01;
+	rid.usUsage = 0x02;
+	rid.dwFlags = RIDEV_INPUTSINK;
+	rid.hwndTarget = hwnd;
+    RegisterRawInputDevices(&rid, 1, sizeof(rid));
 }
 
 bool Window::processMessages()

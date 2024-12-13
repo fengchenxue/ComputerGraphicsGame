@@ -1,9 +1,10 @@
 #ifndef COMMON_STRUCTURES_HLSLI
 #define COMMON_STRUCTURES_HLSLI
 
-struct VS_INSTANCE_STATIC
+struct VS_INSTANCE_GENERAL
 {
     float4x4 W;
+    int MaterialIndex;
 };
 
 struct VS_INPUT_STATIC
@@ -13,18 +14,6 @@ struct VS_INPUT_STATIC
     float3 tangent : TANGENT;
     float2 TexCoords : TEXCOORD;
     uint InstanceID : SV_InstanceID;
-};
-struct PS_INPUT_STATIC
-{
-    float4 position : SV_POSITION;
-    float3 Normal : NORMAL;
-    float3 Tangent : TANGENT;
-    float2 TexCoords : TEXCOORD;
-};
-
-struct VS_INSTANCE_DYNAMIC
-{
-    float4x4 W;
 };
 
 struct VS_INPUT_DYNAMIC{
@@ -36,12 +25,13 @@ struct VS_INPUT_DYNAMIC{
     float4 BoneWeights : BONEWEIGHTS;
     uint InstanceID : SV_InstanceID;
 };
-
-struct PS_INPUT_DYNAMIC{
+struct PS_INPUT_GENERAL
+{
     float4 position : SV_POSITION;
     float3 Normal: NORMAL;
     float3 Tangent: TANGENT;
     float2 TexCoords: TEXCOORD;
+    int MaterialIndex : MATERIALINDEX;
 };
 
 #endif

@@ -18,13 +18,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="PixelShader_Static.hlsl">
-      <Filter>Source Files\HLSL</Filter>
-    </FxCompile>
     <FxCompile Include="VertexShader_Static.hlsl">
       <Filter>Source Files\HLSL</Filter>
     </FxCompile>
-    <FxCompile Include="PixelShader_Dynamic.hlsl">
+    <FxCompile Include="PixelShader_Texture.hlsl">
       <Filter>Source Files\HLSL</Filter>
     </FxCompile>
     <FxCompile Include="VertexShader_Dynamic.hlsl">
@@ -45,6 +42,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Map.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -69,6 +69,9 @@
     </ClInclude>
     <ClInclude Include="stb_image.h">
       <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Map.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

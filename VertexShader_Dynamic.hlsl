@@ -3,7 +3,7 @@ cbuffer cbVS_D : register(b2)
 {
     float4x4 VP;
 };
-StructuredBuffer<VS_INSTANCE_DYNAMIC> InstanceBuffer : register(t1);
+StructuredBuffer<VS_INSTANCE_GENERAL> InstanceBuffer : register(t0);
 Texture2D<float4> BoneTransformsTexture:register(t2);
 
 
@@ -19,11 +19,11 @@ float4x4 getBoneTransform(uint BoneID,uint instanceID)
 
 }
 
-PS_INPUT_DYNAMIC mainVS(VS_INPUT_DYNAMIC input)
+PS_INPUT_GENERAL mainVS(VS_INPUT_DYNAMIC input)
 {
-    VS_INSTANCE_DYNAMIC instance = InstanceBuffer[input.InstanceID];
+    VS_INSTANCE_GENERAL instance = InstanceBuffer[input.InstanceID];
     
-    PS_INPUT_DYNAMIC output;
+    PS_INPUT_GENERAL output;
     float4x4 BoneTransform = getBoneTransform(input.BoneIDs[0], input.InstanceID) * input.BoneWeights[0];
     BoneTransform += getBoneTransform(input.BoneIDs[1], input.InstanceID) * input.BoneWeights[1];
     BoneTransform += getBoneTransform(input.BoneIDs[2], input.InstanceID) * input.BoneWeights[2];
@@ -42,7 +42,8 @@ PS_INPUT_DYNAMIC mainVS(VS_INPUT_DYNAMIC input)
     output.Tangent = normalize(output.Tangent);
     
     output.TexCoords = input.TexCoords;
-   
+    output.MaterialIndex = instance.MaterialIndex;
+    
     return output;
 }
 
