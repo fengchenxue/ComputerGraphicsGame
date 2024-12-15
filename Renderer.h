@@ -42,6 +42,19 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> depthStencilState;
 	Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;
 
+	//skybox
+	Microsoft::WRL::ComPtr<ID3D11Buffer> skyVertexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> skyIndexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> skyVertexShader;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> skyPixelShader;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> skyInputLayout;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> skyTexture;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> skySRV;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> skyDepthStencilState;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> skyRasterizerState;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> skySampler;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> skyConstantBuffer;
+
 	//two shaders, one for static objects and the other for dynamic objects
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader_Static;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer_Static;
@@ -77,8 +90,9 @@ private:
 	void InitializeStructuredBuffer();
 	void InitializeState();
 	void InitializeSampler();
+	void InitializeSkybox(std::vector<Vertex_Sky>& vertices_Sky, std::vector<unsigned int>& indices_Sky);
 
-	void SwitchShader(bool _static);
+	void SwitchShader(int mode);
 	void updateConstantBufferManager();
 
 public:
@@ -86,6 +100,7 @@ public:
 
 	//call if you want to change variable in constant buffer
 	void updateConstantBuffer(bool VSBuffer,std::string bufferName, std::string variableName, void* data, size_t dataSize);
+	void updateSkyboxConstantBuffer(DirectX::XMFLOAT4X4 &VP);
 
 	void updateInstanceBuffer(MeshManager &meshmanager, int mode);
 
@@ -95,9 +110,6 @@ public:
 
 	//call every frame
 	void cleanFrame();
-
-	//call at the end of the game
-	void cleanup();
 
 	//call every frame
 	void present();

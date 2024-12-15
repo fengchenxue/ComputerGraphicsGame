@@ -90,8 +90,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		//DirectX::XMVECTOR at = eye + DirectX::XMLoadFloat3(&player.forward);
 		//DirectX::XMVECTOR to = DirectX::XMLoadFloat3(&player.forward);
 		//DirectX::XMVECTOR up = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixTranspose( DirectX::XMMatrixLookToLH (eye, player.forward, player.up));
-		
+		DirectX::XMMATRIX viewMatrix = DirectX::XMMatrixLookToLH (eye, player.forward, player.up);
+		DirectX::XMMATRIX skyboxViewMatrix = viewMatrix;
+		viewMatrix = DirectX::XMMatrixTranspose(viewMatrix);
+
 		//update P
         constexpr float fov = DirectX::XMConvertToRadians(45.0f);
 		float aspectRatio = static_cast<float>(window.width) / static_cast<float>(window.height);
@@ -105,11 +107,19 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		renderer.updateConstantBuffer(true, "cbVS_D", "VP", &VPF, sizeof(VPF));
 		renderer.updateConstantBuffer(true, "cbVS_S", "VP", &VPF, sizeof(VPF));
 
+		//update skybox VP
+		skyboxViewMatrix.r[3] = { 0,0,0,1 };
+		skyboxViewMatrix = DirectX::XMMatrixTranspose(skyboxViewMatrix);
+		DirectX::XMMATRIX skyboxVP = projectionMatrix * skyboxViewMatrix;
+		DirectX::XMFLOAT4X4 skyboxVPF;
+		DirectX::XMStoreFloat4x4(&skyboxVPF, skyboxVP);
+		renderer.updateSkyboxConstantBuffer(skyboxVPF);
+
+
 		renderer.Render(meshManager);
 
 		renderer.present();
 
     }
-	renderer.cleanup();
     return 0;
 }

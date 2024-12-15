@@ -34,4 +34,15 @@ struct PS_INPUT_GENERAL
     int MaterialIndex : MATERIALINDEX;
 };
 
+struct VS_INPUT_SKY
+{
+    float4 position : POSITION;
+};
+struct PS_INPUT_SKY
+{
+    float4 position : SV_POSITION;
+    float3 TexCoords: TEXCOORD;
+
+};
+
 #endif

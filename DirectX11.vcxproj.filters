@@ -27,6 +27,12 @@
     <FxCompile Include="VertexShader_Dynamic.hlsl">
       <Filter>Source Files\HLSL</Filter>
     </FxCompile>
+    <FxCompile Include="VertexShader_Sky.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelShader_Sky.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

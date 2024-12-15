@@ -3,6 +3,7 @@ cbuffer cbVS_S : register(b0)
 {
     float4x4 VP;
 };
+
 StructuredBuffer<VS_INSTANCE_GENERAL> InstanceBuffer : register(t0);
 
 PS_INPUT_GENERAL mainVS(VS_INPUT_STATIC input)

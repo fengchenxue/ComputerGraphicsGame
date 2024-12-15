@@ -171,6 +171,32 @@ public:
 	//type name{Terrain,NPC,Static}
 	std::map<std::string, MeshDescriptor> objects;
 
+	std::vector<Vertex_Sky> vertices_Skybox = {
+		{DirectX::XMFLOAT3(-1.0f, 1.0f, -1.0f)},
+		{DirectX::XMFLOAT3(1.0f, 1.0f, -1.0f)},
+		{DirectX::XMFLOAT3(1.0f, -1.0f, -1.0f)},
+		{DirectX::XMFLOAT3(-1.0f, -1.0f, -1.0f)},
+
+		{DirectX::XMFLOAT3(-1.0f, 1.0f, 1.0f)},
+		{DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f)},
+		{DirectX::XMFLOAT3(1.0f, -1.0f, 1.0f)},
+		{DirectX::XMFLOAT3(-1.0f, -1.0f, 1.0f)}
+	};
+	std::vector<unsigned int> indices_Skybox = {
+		//front
+		0,1,2,0,2,3,
+		//back
+		4,6,5,4,7,6,
+		//left
+		4,5,1,4,1,0,
+		//right
+		3,2,6,3,6,7,
+		//top
+		4,0,3,4,3,7,
+		//bottom
+		1,5,6,1,6,2 
+	};
+
 	std::vector<Vertex_Static> vertices_Static;
 	std::vector<unsigned int> indices_Static;
 
@@ -185,4 +211,6 @@ public:
 	void updateBonesVector(std::vector<DirectX::XMFLOAT4X4>& BonesTransforms, int index);
 
 	void loadlevel(std::string& filename, ObjectManager& npcManager, Map& map);
+
+
 };

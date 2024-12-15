@@ -476,24 +476,165 @@ void Renderer::InitializeSampler()
 	context->PSSetSamplers(0, 1, sampler.GetAddressOf());
 }
 
-void Renderer::SwitchShader(bool _static)
+void Renderer::InitializeSkybox(std::vector<Vertex_Sky>& vertices_Sky, std::vector<unsigned int>& indices_Sky)
 {
-	if (_static) {
+	//create skybox vertex buffer
+	D3D11_BUFFER_DESC bd = {};
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(Vertex_Sky) * vertices_Sky.size();
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = vertices_Sky.data();
+	device->CreateBuffer(&bd, &initData, skyVertexBuffer.GetAddressOf());
+
+	//create skybox index buffer
+	bd.ByteWidth = sizeof(unsigned int) * indices_Sky.size();
+	bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	initData.pSysMem = indices_Sky.data();
+	device->CreateBuffer(&bd, &initData, skyIndexBuffer.GetAddressOf());
+
+	//load skybox texture
+	std::string skyboxTexturePath[6]={
+		"Res/px.png",
+		"Res/nx.png",
+		"Res/py.png",
+		"Res/ny.png",
+		"Res/pz.png",
+		"Res/nz.png"
+	};
+	unsigned char* skyboxTextureData[6];
+	int width, height, channel;
+	for (int i = 0; i < 6; i++)
+	{
+		skyboxTextureData[i] = stbi_load(skyboxTexturePath[i].c_str(), &width, &height, &channel, STBI_rgb_alpha);
+	}
+	//create skybox texture description
+	D3D11_TEXTURE2D_DESC td = {};
+	td.Width = width;
+	td.Height = height;
+	td.MipLevels = 1;
+	td.ArraySize = 6;
+	td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	td.SampleDesc.Count = 1;
+	td.SampleDesc.Quality = 0;
+	td.Usage = D3D11_USAGE_DEFAULT;
+	td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	td.CPUAccessFlags = 0;
+	td.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
+
+	//create subresource data for each face of the skybox texture
+	D3D11_SUBRESOURCE_DATA subResourceData[6];
+	for (int i = 0; i < 6; i++)
+	{
+		subResourceData[i].pSysMem = skyboxTextureData[i];
+		subResourceData[i].SysMemPitch = width * 4;
+		subResourceData[i].SysMemSlicePitch = 0;
+	}
+	//create skybox texture
+	HRESULT hr = device->CreateTexture2D(&td, subResourceData, skyTexture.GetAddressOf());
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to create Shader Resource View for skyTexture", L"Error", MB_OK);
+	}
+
+	//create shader resource view for the skybox texture
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvd = {};
+	srvd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+	srvd.TextureCube.MipLevels = 1;
+	srvd.TextureCube.MostDetailedMip = 0;
+	device->CreateShaderResourceView(skyTexture.Get(), &srvd, skySRV.GetAddressOf());
+	context->PSSetShaderResources(3, 1, skySRV.GetAddressOf());
+
+	for(int i=0;i<6;i++){
+		stbi_image_free(skyboxTextureData[i]);
+	}
+
+
+	//compile skybox vertex shader and store it in vsBlob,then create vertex shader
+	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
+	D3DCompileFromFile(L"VertexShader_Sky.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob.GetAddressOf(), nullptr);
+	device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &skyVertexShader);
+
+	//create input layout
+	D3D11_INPUT_ELEMENT_DESC layout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	device->CreateInputLayout(layout, _countof(layout), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &skyInputLayout);
+
+	//compile skybox pixel shader and store it in psBlob,then create pixel shader
+	Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
+	D3DCompileFromFile(L"PixelShader_Sky.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, psBlob.GetAddressOf(), nullptr);
+	device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &skyPixelShader);
+
+	D3D11_DEPTH_STENCIL_DESC dsd = {};
+	dsd.DepthEnable = true;
+	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsd.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+	device->CreateDepthStencilState(&dsd, skyDepthStencilState.GetAddressOf());
+
+	//create samplerState
+	D3D11_SAMPLER_DESC sd = {};
+	sd.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sd.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sd.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sd.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sd.MinLOD = 0;
+	sd.MaxLOD = D3D11_FLOAT32_MAX;
+	device->CreateSamplerState(&sd, skySampler.GetAddressOf());
+	context->PSSetSamplers(1, 1, skySampler.GetAddressOf());
+
+	//create rasterizer state
+	D3D11_RASTERIZER_DESC rd = {};
+	rd.FillMode = D3D11_FILL_SOLID;
+	rd.CullMode = D3D11_CULL_NONE;
+	device->CreateRasterizerState(&rd, skyRasterizerState.GetAddressOf());
+	//context->RSSetState(skyRasterizerState.Get());
+
+	//create constant buffer for skybox
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(DirectX::XMFLOAT4X4);
+	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	device->CreateBuffer(&bd, nullptr, skyConstantBuffer.GetAddressOf());
+	context->VSSetConstantBuffers(4, 1, skyConstantBuffer.GetAddressOf());
+
+}
+
+
+void Renderer::SwitchShader(int mode)
+{
+	if (mode == 0) {
+		//set the input layout
+		context->IASetInputLayout(skyInputLayout.Get());
+		//set the shaders
+		context->VSSetShader(skyVertexShader.Get(), NULL, 0);
+		context->PSSetShader(skyPixelShader.Get(), NULL, 0);
+		//set the vertex and index buffer
+		UINT stride = sizeof(Vertex_Sky);
+		UINT offset = 0;
+		context->IASetVertexBuffers(0, 1, skyVertexBuffer.GetAddressOf(), &stride, &offset);
+		context->IASetIndexBuffer(skyIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	}
+	else if (mode==1) {
 		//set the input layout
 		context->IASetInputLayout(inputLayout_Static.Get());
 		//set the shaders
 		context->VSSetShader(vertexShader_Static.Get(), NULL, 0);
+		context->PSSetShader(pixelShader_General.Get(), NULL, 0);
 		//set the vertex and index buffer
 		UINT stride = sizeof(Vertex_Static);
 		UINT offset = 0;
 		context->IASetVertexBuffers(0, 1, vertexBuffer_Static.GetAddressOf(), &stride, &offset);
 		context->IASetIndexBuffer(indexBuffer_Static.Get(), DXGI_FORMAT_R32_UINT, 0);
 	}
-	else {
+	else if(mode==2) {
 		//set the input layout
 		context->IASetInputLayout(inputLayout_Dynamic.Get());
 		//set the shaders
 		context->VSSetShader(vertexShader_Dynamic.Get(), NULL, 0);
+		context->PSSetShader(pixelShader_General.Get(), NULL, 0);
 		//set the vertex and index buffer
 		UINT stride = sizeof(Vertex_Dynamic);
 		UINT offset = 0;
@@ -569,6 +710,14 @@ void Renderer::updateConstantBuffer(bool VSBuffer, std::string bufferName, std::
 	}
 }
 
+void Renderer::updateSkyboxConstantBuffer(DirectX::XMFLOAT4X4 &VP)
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	context->Map(skyConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &VP, sizeof(DirectX::XMFLOAT4X4));
+	context->Unmap(skyConstantBuffer.Get(), 0);
+}
+
 void Renderer::updateInstanceBuffer(MeshManager& meshmanager,int mode)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -610,20 +759,29 @@ void Renderer::Initialize(Window& window, MeshManager& meshmanager)
 	InitializeDeviceAndContext(window);
 	InitializeRenderTarget(window);
 	InitializeShadersAndConstantBuffer();
+	InitializeSkybox(meshmanager.vertices_Skybox, meshmanager.indices_Skybox);
 	initializeIndexAndVertexBuffer(meshmanager.vertices_Static, meshmanager.indices_Static, meshmanager.vertices_Dynamic, meshmanager.indices_Dynamic);
 	InitializeStructuredBuffer();
 	InitializeState();
 	InitializeSampler();
+	
 
-	context->PSSetShader(pixelShader_General.Get(), NULL, 0);
+	//context->PSSetShader(pixelShader_General.Get(), NULL, 0);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 void Renderer::Render(MeshManager & meshManager)
 {
 	updateConstantBufferManager();
+	
+	SwitchShader(0);
+	context->RSSetState(skyRasterizerState.Get());
+	context->OMSetDepthStencilState(skyDepthStencilState.Get(), 0);
+	context->DrawIndexed(static_cast<UINT>(meshManager.indices_Skybox.size()), 0,0);
+	context->OMSetDepthStencilState(depthStencilState.Get(), 0);
+	context->RSSetState(rasterizerState.Get());
 
-	SwitchShader(true);
+	SwitchShader(1);
 	updateInstanceBuffer(meshManager, 0);
 	MeshDescriptor md = meshManager.objects["Terrain"];
 	context->DrawIndexedInstanced(md.indexCount, md.instanceCount, md.indexOffset, md.vertexOffset, 0);
@@ -632,7 +790,7 @@ void Renderer::Render(MeshManager & meshManager)
 	md = meshManager.objects["Static"];
 	context->DrawIndexedInstanced(md.indexCount, md.instanceCount, md.indexOffset, md.vertexOffset, 0);
 
-	SwitchShader(false);
+	SwitchShader(2);
 	updateInstanceBuffer(meshManager, 2);
 	md = meshManager.objects["NPC"];
 	context->DrawIndexedInstanced(md.indexCount, md.instanceCount, md.indexOffset, md.vertexOffset, 0);
@@ -646,27 +804,6 @@ void Renderer::cleanFrame()
 	context->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
-void Renderer::cleanup()
-{
-	//release all the resources
-	vertexBuffer_Static.Reset();
-	for (auto& manager : PSconstantBufferManager_collection)
-	{
-		manager.constantBuffer.Reset();
-	}
-	PSconstantBufferManager_collection.clear();
-	inputLayout_Static.Reset();
-	vertexShader_Static.Reset();
-	pixelShader_General.Reset();
-	depthStencilView.Reset();
-	depthbuffer.Reset();
-	backbufferRenderTargetView.Reset();
-	backbuffer.Reset();
-	swapChain.Reset();
-	context.Reset();
-	device.Reset();
-	adapter.Reset();
-}
 
 void Renderer::present()
 {
