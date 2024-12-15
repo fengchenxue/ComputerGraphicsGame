@@ -33,6 +33,18 @@
     <FxCompile Include="PixelShader_Sky.hlsl">
       <Filter>Source Files\HLSL</Filter>
     </FxCompile>
+    <FxCompile Include="PixelShader_GBuffer.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelShader_Lighting.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexShader_Lighting.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexShader_GBuffer.hlsl">
+      <Filter>Source Files\HLSL</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

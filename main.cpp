@@ -29,12 +29,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	std::string filename = "Input.txt";
 	meshManager.loadlevel(filename,objectManager,map);
 	
-	//set initial position
+	//set player initial position
 	map.CheckVerticalCollision_Player(player);
-	for (auto& npc : objectManager.npcs)
-	{
-		map.CheckVerticalCollision_Object(npc);
-	}
 
 	//initialize renderer
 	renderer.Initialize(window, meshManager);
@@ -44,24 +40,36 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	{
 		if (pair.first == "Terrain")
 		{
-			renderer.loadTexture(pair.second.textureFile, "tex0");
+			renderer.loadTexture(pair.second.textureFile, "tex0",0);
 		}
 		else if (pair.first == "NPC")
 		{
-			renderer.loadTexture(pair.second.textureFile, "tex1");
+			renderer.loadTexture(pair.second.textureFile, "tex1",1);
+			renderer.loadTexture(pair.second.normalMapFile, "normal1",9);
 		}
 		else
 		{
-			renderer.loadTexture(pair.second.textureFile, "tex2");
+			renderer.loadTexture(pair.second.textureFile, "tex2",2);
+			renderer.loadTexture(pair.second.normalMapFile, "normal2",10);
 		}
 	}
+	//recommanded colour:(255 180 100) (255 140 60) (255 200 150)
+	//initialize lighting constant buffer
+	lightingConstants lighting;
+	lighting.lightDirection = { -1.0f, -1.0f, -1.0f };
+	float length = sqrt(lighting.lightDirection.x * lighting.lightDirection.x + lighting.lightDirection.y * lighting.lightDirection.y + lighting.lightDirection.z * lighting.lightDirection.z);
+	lighting.lightDirection.x /= length;
+	lighting.lightDirection.y /= length;
+	lighting.lightDirection.z /= length;
+	lighting.lightColor = { 255.0f, 188.0f, 100.0f };
+	lighting.lightIntensity = 0.1f;
+	renderer.updataLightingConstantBuffer(lighting);
 
 	float dt;
     while (true)
     {
 		//return true if the message is WM_QUIT
 		if (window.processMessages()) break;
-		renderer.cleanFrame();
 		//update dt
 		dt = timer.dt();
 

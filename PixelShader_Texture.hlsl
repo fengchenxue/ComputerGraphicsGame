@@ -2,6 +2,9 @@
 Texture2D tex0 : register(t0);
 Texture2D tex1 : register(t1);
 Texture2D tex2 : register(t2);
+Texture2D normal0 : register(t8);
+Texture2D normal1 : register(t9);
+Texture2D normal2 : register(t10);
 SamplerState samLinear : register(s0);
 
 float4 mainPS(PS_INPUT_GENERAL pIn) : SV_Target0

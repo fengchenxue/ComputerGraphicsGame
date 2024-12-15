@@ -30,6 +30,13 @@ struct Vertex_Dynamic
 	unsigned int bonesIDs[4];
 	float boneWeights[4];
 };
+struct lightingConstants
+{
+	DirectX::XMFLOAT3 lightDirection;
+	float padding=0.0f;
+	DirectX::XMFLOAT3 lightColor;
+	float lightIntensity;
+};
 
 
 void ComputeTangent(DirectX::XMFLOAT3 normal, DirectX::XMFLOAT3& tangent);

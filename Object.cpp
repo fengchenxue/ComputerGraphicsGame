@@ -279,6 +279,7 @@ void MeshManager::loadGEMMeshAndAnimation(std::vector<GEMLoader::GEMMesh>& gemme
 			}
 			materials.push_back(material);
 			md.textureFile = material.find("diffuse").filePath;
+			md.normalMapFile = material.find("normals").filePath;
 			//load Skeleton
 			loadSkeleton(GEManimation, animation);
 			//load Animation
@@ -311,6 +312,7 @@ void MeshManager::loadGEMMeshAndAnimation(std::vector<GEMLoader::GEMMesh>& gemme
 			}
 			materials.push_back(material);
 			md.textureFile = material.find("diffuse").filePath;
+			md.normalMapFile = material.find("normals").filePath;
 		}
 		objects[objectName] = md;
 	}

@@ -98,6 +98,7 @@ struct MeshDescriptor {
 	int instanceCount = 0;
 
 	std::string textureFile;
+	std::string normalMapFile;
 };
 class Object {
 public:

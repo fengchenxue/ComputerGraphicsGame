@@ -602,6 +602,87 @@ void Renderer::InitializeSkybox(std::vector<Vertex_Sky>& vertices_Sky, std::vect
 
 }
 
+void Renderer::InitializeGBuffer(Window& window)
+{
+	D3D11_TEXTURE2D_DESC texDesc = {};
+	texDesc.Width = window.width;
+	texDesc.Height = window.height;
+	texDesc.MipLevels = 1;
+	texDesc.ArraySize = 1;
+	texDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Usage = D3D11_USAGE_DEFAULT;
+	texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+	for (int i = 0; i < 3; i++) {
+		if (i == 0)
+			texDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		else if (i == 1)
+			texDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		else if (i == 2)
+			texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		device->CreateTexture2D(&texDesc, nullptr, gBufferTextures[i].GetAddressOf());
+		device->CreateRenderTargetView(gBufferTextures[i].Get(), nullptr, gBufferRTVs[i].GetAddressOf());
+		device->CreateShaderResourceView(gBufferTextures[i].Get(), nullptr, gBufferSRVs[i].GetAddressOf());
+	}
+
+	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
+	D3DCompileFromFile(L"VertexShader_GBuffer.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob.GetAddressOf(), nullptr);
+	device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, gBufferVertexShader.GetAddressOf());
+
+
+	Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
+	D3DCompileFromFile(L"PixelShader_GBuffer.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, psBlob.GetAddressOf(), nullptr);
+	device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, gBufferPixelShader.GetAddressOf());
+
+}
+
+void Renderer::InitializeLightingBuffer()
+{
+	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
+	D3DCompileFromFile(L"VertexShader_Lighting.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainVS", "vs_5_0", 0, 0, vsBlob.GetAddressOf(), nullptr);
+	device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &lightingVertexShader);
+
+	D3D11_INPUT_ELEMENT_DESC layout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+	};
+	device->CreateInputLayout(layout, _countof(layout), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &lightingInputLayout);
+
+	Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
+	D3DCompileFromFile(L"PixelShader_Lighting.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "mainPS", "ps_5_0", 0, 0, psBlob.GetAddressOf(), nullptr);
+	device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &lightingPixelShader);
+
+	//create constant buffer for Lighting
+	D3D11_BUFFER_DESC bd = {};
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(lightingConstants);
+	bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	device->CreateBuffer(&bd, nullptr, lightingConstantBuffer.GetAddressOf());
+	context->PSSetConstantBuffers(0, 1, lightingConstantBuffer.GetAddressOf());
+
+	//create vertex buffer for lighting
+	D3D11_BUFFER_DESC vbd = {};
+	vbd.Usage = D3D11_USAGE_DEFAULT;
+	vbd.ByteWidth = sizeof(DirectX::XMFLOAT3) * fullscreenVertices.size();
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vbd.CPUAccessFlags = 0;
+	vbd.MiscFlags = 0;
+	vbd.StructureByteStride = 0;
+
+	D3D11_SUBRESOURCE_DATA vinitData = {};
+	vinitData.pSysMem = fullscreenVertices.data();
+	device->CreateBuffer(&vbd, &vinitData, lightingVertexBuffer.GetAddressOf());
+
+	//create depth stencil state
+	D3D11_DEPTH_STENCIL_DESC dsd = {};
+	dsd.DepthEnable = true;
+	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+	dsd.DepthFunc = D3D11_COMPARISON_LESS;
+	device->CreateDepthStencilState(&dsd, lightingDepthStencilState.GetAddressOf());
+}
+
 
 void Renderer::SwitchShader(int mode)
 {
@@ -670,6 +751,41 @@ void Renderer::updateConstantBufferManager()
 	}
 }
 
+void Renderer::GeometryPass(MeshManager& meshManager)
+{
+	//set the render target to the GBuffer
+	ID3D11RenderTargetView* rtvArr[3] = {
+	   gBufferRTVs[0].Get(),
+	   gBufferRTVs[1].Get(),
+	   gBufferRTVs[2].Get()
+	};
+	context->OMSetRenderTargets(3, rtvArr, depthStencilView.Get());
+
+	context->IASetInputLayout(inputLayout_Static.Get());
+	context->VSSetShader(gBufferVertexShader.Get(), NULL, 0);
+	context->PSSetShader(gBufferPixelShader.Get(), NULL, 0);
+
+	UINT stride = sizeof(Vertex_Static);
+	UINT offset = 0;
+	context->IASetVertexBuffers(0, 1, vertexBuffer_Static.GetAddressOf(), &stride, &offset);
+	context->IASetIndexBuffer(indexBuffer_Static.Get(), DXGI_FORMAT_R32_UINT, 0);
+}
+
+void Renderer::LightPass()
+{
+	context->OMSetDepthStencilState(lightingDepthStencilState.Get(), 0);
+	context->OMSetRenderTargets(1, backbufferRenderTargetView.GetAddressOf(), depthStencilView.Get());
+	context->PSSetShaderResources(5, 3, gBufferSRVs->GetAddressOf());
+	//set shader
+	context->IASetInputLayout(lightingInputLayout.Get());
+	context->VSSetShader(lightingVertexShader.Get(), NULL, 0);
+	context->PSSetShader(lightingPixelShader.Get(), NULL, 0);
+	//set vertex buffer
+	UINT stride = sizeof(DirectX::XMFLOAT3);
+	UINT offset = 0;
+	context->IASetVertexBuffers(0, 1, lightingVertexBuffer.GetAddressOf(), &stride, &offset);
+}
+
 void Renderer::updateConstantBuffer(bool VSBuffer, std::string bufferName, std::string variableName, void* data, size_t dataSize)
 {
 	if (VSBuffer) {
@@ -718,6 +834,14 @@ void Renderer::updateSkyboxConstantBuffer(DirectX::XMFLOAT4X4 &VP)
 	context->Unmap(skyConstantBuffer.Get(), 0);
 }
 
+void Renderer::updataLightingConstantBuffer(lightingConstants& lighting)
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	context->Map(lightingConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &lighting, sizeof(lightingConstants));
+	context->Unmap(lightingConstantBuffer.Get(), 0);
+}
+
 void Renderer::updateInstanceBuffer(MeshManager& meshmanager,int mode)
 {
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -764,30 +888,34 @@ void Renderer::Initialize(Window& window, MeshManager& meshmanager)
 	InitializeStructuredBuffer();
 	InitializeState();
 	InitializeSampler();
-	
+	InitializeGBuffer(window);
+	InitializeLightingBuffer();
 
-	//context->PSSetShader(pixelShader_General.Get(), NULL, 0);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 void Renderer::Render(MeshManager & meshManager)
 {
+	cleanFrame();
 	updateConstantBufferManager();
 	
+	
+	GeometryPass(meshManager);
+	updateInstanceBuffer(meshManager, 1);
+	MeshDescriptor md = meshManager.objects["Static"];
+	context->DrawIndexedInstanced(md.indexCount, md.instanceCount, md.indexOffset, md.vertexOffset, 0);
+	LightPass();
+	context->Draw(3, 0);
+
+
 	SwitchShader(0);
-	context->RSSetState(skyRasterizerState.Get());
 	context->OMSetDepthStencilState(skyDepthStencilState.Get(), 0);
 	context->DrawIndexed(static_cast<UINT>(meshManager.indices_Skybox.size()), 0,0);
 	context->OMSetDepthStencilState(depthStencilState.Get(), 0);
-	context->RSSetState(rasterizerState.Get());
 
 	SwitchShader(1);
 	updateInstanceBuffer(meshManager, 0);
-	MeshDescriptor md = meshManager.objects["Terrain"];
-	context->DrawIndexedInstanced(md.indexCount, md.instanceCount, md.indexOffset, md.vertexOffset, 0);
-
-	updateInstanceBuffer(meshManager, 1);
-	md = meshManager.objects["Static"];
+	md = meshManager.objects["Terrain"];
 	context->DrawIndexedInstanced(md.indexCount, md.instanceCount, md.indexOffset, md.vertexOffset, 0);
 
 	SwitchShader(2);
@@ -799,9 +927,13 @@ void Renderer::Render(MeshManager & meshManager)
 
 void Renderer::cleanFrame()
 {
-	float clearColor[] = { 0.0f, 0.2f, 0.2f, 1.0f };
+	float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	context->ClearRenderTargetView(backbufferRenderTargetView.Get(), clearColor);
-	context->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	context->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+	for (int i = 0; i < 3; i++) {
+		context->ClearRenderTargetView(gBufferRTVs[i].Get(), clearColor);
+	}
 }
 
 
@@ -810,11 +942,15 @@ void Renderer::present()
 	swapChain->Present(0, 0);
 }
 
-void Renderer::loadTexture(std::string filename, std::string textureShaderName)
+void Renderer::loadTexture(std::string filename, std::string textureShaderName,UINT slot)
 {
 	
 	int width, height, channels;
 	unsigned char* texels = stbi_load(filename.c_str(), &width, &height, &channels, 0);
+	if (!texels) {
+		MessageBox(NULL, L"Failed to load texture", L"Error", MB_OK);
+	}
+
 	unsigned char* texelsWithAlpha;
 	if (channels == 3) {
 		channels = 4;
@@ -836,7 +972,7 @@ void Renderer::loadTexture(std::string filename, std::string textureShaderName)
 	td.Height = height;
 	td.MipLevels = 1;
 	td.ArraySize = 1;
-	td.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	td.Format = (slot < 4) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
 	td.SampleDesc.Count = 1;
 	td.SampleDesc.Quality = 0;
 	td.Usage = D3D11_USAGE_DEFAULT;
@@ -848,21 +984,26 @@ void Renderer::loadTexture(std::string filename, std::string textureShaderName)
 	initData.SysMemPitch = width * channels;
 
 	Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
-	device->CreateTexture2D(&td, &initData, texture.GetAddressOf());
-
+	HRESULT hr = device->CreateTexture2D(&td, &initData, texture.GetAddressOf());
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to create texture", L"Error", MB_OK);
+	}
 	//create shader resource view for the texture
 	D3D11_SHADER_RESOURCE_VIEW_DESC srvd = {};
-	srvd.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	srvd.Format = (slot < 4) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
 	srvd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srvd.Texture2D.MostDetailedMip = 0;
 	srvd.Texture2D.MipLevels = 1;
 	
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-	device->CreateShaderResourceView(texture.Get(), &srvd, srv.GetAddressOf());
-
+	hr = device->CreateShaderResourceView(texture.Get(), &srvd, srv.GetAddressOf());
+	if (FAILED(hr)) {
+		MessageBox(NULL, L"Failed to create Shader Resource View", L"Error", MB_OK);
+	}
+	
 	textureMap[textureShaderName] = { texture,srv };
 
-	context->PSSetShaderResources(textureBindPoints[textureShaderName], 1, srv.GetAddressOf());
+	context->PSSetShaderResources(slot, 1, srv.GetAddressOf());
 
 	if (texelsWithAlpha != texels) {
 		delete[] texelsWithAlpha;

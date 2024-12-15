@@ -82,6 +82,28 @@ private:
 	std::map<std::string, TextureData> textureMap;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
 
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> gBufferTextures[3];
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> gBufferRTVs[3];
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> gBufferSRVs[3];
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> gBufferVertexShader;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> gBufferPixelShader;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> lightingVertexShader;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> lightingPixelShader;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> lightingVertexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> lightingConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> lightingInputLayout;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> lightingDepthStencilState;
+	std::vector<DirectX::XMFLOAT3> fullscreenVertices =
+	{
+		{-1.0f, 1.0f,0.0f},
+		{ 3.0f, 1.0f,0.0f},
+		{-1.0f,-3.0f,0.0f}
+	};
+
+
+
+
+
 	void InitializeDeviceAndContext(Window& window);
 	void InitializeRenderTarget(Window&window);
 	void InitializeShadersAndConstantBuffer();
@@ -91,9 +113,14 @@ private:
 	void InitializeState();
 	void InitializeSampler();
 	void InitializeSkybox(std::vector<Vertex_Sky>& vertices_Sky, std::vector<unsigned int>& indices_Sky);
+	void InitializeGBuffer(Window & window);
+	void InitializeLightingBuffer();
 
 	void SwitchShader(int mode);
 	void updateConstantBufferManager();
+
+	void GeometryPass(MeshManager& meshManager);
+	void LightPass();
 
 public:
 	void Initialize(Window& window, MeshManager& meshmanager);
@@ -101,6 +128,7 @@ public:
 	//call if you want to change variable in constant buffer
 	void updateConstantBuffer(bool VSBuffer,std::string bufferName, std::string variableName, void* data, size_t dataSize);
 	void updateSkyboxConstantBuffer(DirectX::XMFLOAT4X4 &VP);
+	void updataLightingConstantBuffer(lightingConstants & lighting);
 
 	void updateInstanceBuffer(MeshManager &meshmanager, int mode);
 
@@ -114,6 +142,6 @@ public:
 	//call every frame
 	void present();
 
-	void loadTexture(std::string filename, std::string textureShaderName);
+	void loadTexture(std::string filename, std::string textureShaderName, UINT slot);
 
 };
