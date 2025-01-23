@@ -145,7 +145,7 @@ void Map::CheckVerticalCollision_Player(Object& object)
 	object.position.x = std::max(std::min(object.position.x, static_cast<float>(width)), 0.0f);
 	object.position.z = std::max(std::min(object.position.z, static_cast<float>(height)), 0.0f);
 
-	//check the collision with the terrain
+	//get the collision bound
 	DirectX::XMFLOAT3 minBound, maxBound;
 	object.getBound(minBound, maxBound);
 
